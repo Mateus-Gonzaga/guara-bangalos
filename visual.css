@@ -378,3 +378,31 @@ input, select, textarea { border-color:var(--borda-campo); }
 .adm-logo span { color:#D9A066; }
 .cel.st-confirmada, .pn-leg .st-confirmada { background:#A0522D; }
 .ocup td.st-confirmada { background:#C98A62; }
+
+/* ===== página de contato ===== */
+.contato { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:40px; align-items:start; }
+.ct-form { background:#fff; border:1px solid var(--linha); border-radius:6px; padding:26px 28px; display:grid; gap:14px; }
+.ct-form h2 { font-size:26px; margin:0; }
+.ct-form > .peq { margin:-6px 0 4px; }
+.ct-form label { display:flex; flex-direction:column; gap:5px; font-size:14px; font-weight:600; color:var(--texto); }
+.ct-form label small { font-weight:400; color:var(--suave); }
+.ct-form input, .ct-form select, .ct-form textarea { font-weight:400; }
+.ct-form label.invalido input, .ct-form label.invalido textarea { border-color:#c0392b; }
+.ct-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.ct-form .btn { justify-self:start; padding:11px 24px; font-size:16px; }
+.ct-whats { display:flex; align-items:center; gap:14px; background:#1f7a46; color:#fff; border-radius:6px; padding:18px 20px; margin-bottom:16px; transition:background .2s; }
+.ct-whats:hover { background:#196a3c; color:#fff; }
+.ct-whats i { font-size:34px; }
+.ct-whats b { display:block; font-size:18px; }
+.ct-whats small { color:#d7efe0; font-size:14px; }
+.ct-lista { list-style:none; margin:0; padding:0; background:#fff; border:1px solid var(--linha); border-radius:6px; }
+.ct-lista li { display:flex; gap:14px; padding:14px 18px; border-top:1px solid var(--linha); font-size:15px; }
+.ct-lista li:first-child { border-top:0; }
+.ct-lista li > i { width:20px; text-align:center; color:var(--roxo); margin-top:4px; }
+.ct-lista span { display:flex; flex-direction:column; min-width:0; overflow-wrap:anywhere; }
+.ct-lista small { font-size:12.5px; color:var(--suave); }
+.ct-mapa { font-size:14px; margin-top:2px; }
+@media (max-width:860px) { .contato { grid-template-columns:1fr; } .ct-canais { order:-1; } .ct-2 { grid-template-columns:1fr; } }
+/* menu: sem moldura de foco ao clicar com o mouse */
+#menu a:focus:not(:focus-visible) { outline:none; }
+#menu a:focus-visible { outline:2px solid var(--roxo); outline-offset:-6px; }

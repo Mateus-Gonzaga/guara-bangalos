@@ -291,11 +291,40 @@ const mapaURL = () => `https://maps.google.com/maps?q=${encodeURIComponent(CMS.l
 const mapa = () => `<div class="mapa"><iframe loading="lazy" title="Mapa" src="${mapaURL()}"></iframe></div>`;
 P['como-chegar'] = () => artigo('Como chegar', 0, null, `<p>Conheça nossa localização no mapa:</p>${mapa()}`);
 
-P.contato = () => artigo('Contato', 0, null, `
-  <h3 class="outras">Outras Informações</h3><p><i class="fa fa-info-circle" style="color:#1e88e5"></i></p>
-  ${paragrafos(CMS.paginas.contato)}
-  <p>Para um atendimento mais ágil, <a href="https://wa.me/${esc(CMS.contato.whatsapp)}" target="_blank">clique aqui</a> e fale via WhatsApp</p>
-  <p><a href="https://wa.me/${esc(CMS.contato.whatsapp)}" target="_blank" class="whats-img"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></a></p>`);
+P.contato = () => {
+  const C = CMS.contato, tel = C.telefone.replace(/\D/g, '');
+  const msg = encodeURIComponent(`Olá! Vim pelo site do ${CMS.marca.nome} e gostaria de mais informações.`);
+  return banda('Contato', 'Contato', 'Tire dúvidas, peça um orçamento para grupos ou combine detalhes da sua estadia.') + `<section class="pagina-texto"><div class="container contato">
+    <form class="ct-form" onsubmit="event.preventDefault();enviarContato(this)" novalidate>
+      <h2>Envie uma mensagem</h2>
+      <p class="peq">${esc(CMS.paginas.contato)}</p>
+      <div class="ct-2"><label>Nome<input name="nome" required autocomplete="name"></label><label>Telefone ou WhatsApp<input name="telefone" type="tel" autocomplete="tel" placeholder="(61) 90000-0000" oninput="mascaraCel(this)"></label></div>
+      <label>E-mail<input name="email" type="email" required autocomplete="email"></label>
+      <div class="ct-2"><label>Assunto<select name="assunto"><option>Dúvida sobre hospedagem</option><option>Orçamento para grupo</option><option>Reserva já feita</option><option>Outro assunto</option></select></label>
+        <label><span>Datas de interesse <small>(opcional)</small></span><input name="datas" placeholder="Ex.: 20 a 23 de dezembro"></label></div>
+      <label>Mensagem<textarea name="mensagem" rows="5" required></textarea></label>
+      <button class="btn">Enviar mensagem</button><div id="ret-contato" role="status"></div>
+    </form>
+    <aside class="ct-canais">
+      <a class="ct-whats" href="https://wa.me/${esc(C.whatsapp)}?text=${msg}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i><span><b>Conversar no WhatsApp</b><small>A forma mais rápida de falar com a gente</small></span></a>
+      <ul class="ct-lista">
+        <li><i class="fa fa-phone-alt"></i><span><small>Telefone</small><a href="tel:${tel}">${esc(C.telefone)}</a></span></li>
+        <li><i class="far fa-envelope"></i><span><small>E-mail</small><a href="mailto:${esc(C.email)}">${esc(C.email)}</a></span></li>
+        <li><i class="fab fa-instagram"></i><span><small>Instagram</small><a href="https://instagram.com/${esc(C.instagram)}" target="_blank" rel="noopener">@${esc(C.instagram)}</a></span></li>
+        <li><i class="far fa-clock"></i><span><small>Atendimento</small>Todos os dias, das 8h às 20h</span></li>
+        <li><i class="fa fa-map-marker-alt"></i><span><small>Endereço</small>${esc(CMS.local.enderecoCompleto)}<a class="ct-mapa" href="#/como-chegar">Ver como chegar</a></span></li>
+      </ul>
+    </aside>
+  </div></section>`;
+};
+window.enviarContato = f => {
+  const d = Object.fromEntries(new FormData(f)), out = $('#ret-contato');
+  f.querySelectorAll('.invalido').forEach(l => l.classList.remove('invalido'));
+  const falta = ['nome', 'email', 'mensagem'].filter(k => !String(d[k] || '').trim() || (k === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)));
+  if (falta.length) { falta.forEach(k => f.elements[k].closest('label').classList.add('invalido')); f.elements[falta[0]].focus(); out.innerHTML = '<p class="aviso erro">Preencha nome, um e-mail válido e a mensagem.</p>'; return; }
+  enviarEmail(POUSADA_EMAIL, `[Site] ${d.assunto} — ${d.nome}`, `<p><b>${esc(d.nome)}</b> (${esc(d.email)}${d.telefone ? ', ' + esc(d.telefone) : ''}) escreveu:</p>${d.datas ? `<p>Datas de interesse: ${esc(d.datas)}</p>` : ''}<p>${esc(d.mensagem).replace(/\n/g, '<br>')}</p>`);
+  f.reset(); out.innerHTML = '<p class="aviso">Mensagem enviada. Respondemos em até um dia útil.</p>';
+};
 
 P.politica = () => artigo('Política de cancelamento', 0, null, paragrafos(CMS.paginas.politica) + `
   <div class="cancelar-aviso"><h2>Precisa cancelar uma reserva?</h2>
