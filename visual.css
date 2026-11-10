@@ -664,3 +664,21 @@ input, select, textarea, .rs-datas, .cal-datas, .rh-datas-g { border-radius:var(
 .mosaico .m-foto { border-radius:6px; }
 .tf-grade button, .tf-grade img { border-radius:8px; overflow:hidden; }
 #lightbox img { border-radius:8px; }
+
+/* fotos dentro de cards: respiro e os quatro cantos arredondados */
+.un-card { padding:12px; gap:0; }
+.un-foto { border-radius:var(--raio-img) !important; overflow:hidden; height:auto; min-height:300px; }
+.un-foto img { border-radius:var(--raio-img); }
+.un-info { padding:14px 20px 14px 26px; }
+.rh-destaque { padding:12px; gap:0; }
+.rh-foto { border-radius:var(--raio-img); }
+.rh-dest-info { padding:14px 16px 14px 26px; }
+.resultado .imagem, .chale-card .imagem { border-radius:var(--raio-img); }
+@media (max-width:860px) {
+  .un-foto { min-height:0; height:220px; }
+  .un-info { padding:16px 6px 6px; }
+  .rh-dest-info { padding:16px 6px 6px; }
+}
+.un-foto { position:relative; min-height:300px; height:auto; }
+.un-foto img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+@media (max-width:860px) { .un-foto { min-height:220px; height:220px; } }
