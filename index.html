@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guará Bangalôs — Hospedagem Ecolodge</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div id="pagina">
+  <div id="sp-top-bar"><div class="container">
+    <ul class="social"><li><a href="https://instagram.com/guarabangalos" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a></li>
+      <li><a href="https://wa.me/5561900000000" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a></li></ul>
+    <span class="contato"><i class="fa fa-mobile-alt"></i> <a href="tel:61900000000">(61) 90000-0000</a></span>
+  </div></div>
+
+  <header id="sp-header"><div class="container">
+    <div class="logo-area">
+      <a href="#" class="offcanvas-toggler" aria-label="Menu" onclick="event.preventDefault();document.body.classList.add('menu-aberto')"><i class="fa fa-bars"></i></a>
+      <a href="#/" class="marca"><img class="logo-image" src="img/logo-guara.png" alt="" onerror="this.remove()"><span class="marca-nome">Guará Bangalôs<small>Hospedagem Ecolodge</small></span></a>
+    </div>
+    <nav id="menu" aria-label="Menu principal">
+      <a href="#/">Início</a>
+      <a href="#/acomodacoes">Acomodações</a>
+      <a href="#/fotos">Fotos</a>
+      <a href="#/reservas">Reservas</a>
+      <a href="#/como-chegar">Como chegar</a>
+      <a href="#/contato">Contato</a>
+      <a href="#/login" class="btn-login" id="link-login">Entrar</a>
+    </nav>
+  </div></header>
+
+  <main id="app"></main>
+
+  <section id="localizacao" aria-labelledby="loc-titulo"><div class="container loc">
+    <div class="loc-texto">
+      <h2 id="loc-titulo">Como chegar ao Guará Bangalôs</h2>
+      <address>Região do Vale da Lua<br>Alto Paraíso de Goiás · 73770-000</address>
+      <ol class="trajeto" aria-label="Trajeto a partir de Alto Paraíso de Goiás">
+        <li><b>Alto Paraíso de Goiás</b><span>Cerca de 230 km de Brasília</span></li>
+        <li><b>GO-239, sentido São Jorge</b><span>Estrada para a vila de São Jorge</span></li>
+        <li class="chegada"><b>Guará Bangalôs</b><span>Região do Vale da Lua</span></li>
+      </ol>
+      <div class="loc-acoes">
+        <a class="btn loc-principal" href="https://www.google.com/maps/dir/?api=1&amp;destination=-14.1772768,-47.7788036" target="_blank" rel="noopener"><i class="fa fa-route" aria-hidden="true"></i> Abrir rota no Google Maps</a>
+        <a class="loc-sec" href="https://waze.com/ul?ll=-14.1772768,-47.7788036&amp;navigate=yes" target="_blank" rel="noopener"><i class="fab fa-waze" aria-hidden="true"></i> Abrir no Waze</a>
+        <button class="loc-sec" type="button" onclick="navigator.clipboard.writeText('Vale da Lua, Alto Paraíso de Goiás - GO, 73770-000');toast('Endereço copiado')"><i class="far fa-copy" aria-hidden="true"></i> Copiar endereço</button>
+      </div>
+    </div>
+    <div class="loc-mapa"><iframe loading="lazy" title="Mapa com a localização do Guará Bangalôs" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=-14.1772768,-47.7788036&amp;z=13&amp;hl=pt-BR&amp;output=embed"></iframe></div>
+  </div></section>
+  <section id="sp-bottom"><div class="container bottom-grid">
+    <div class="col-pag"><h3>Formas de pagamento</h3>
+      <p>Trabalhamos com PIX ou transferências.</p>
+      <div class="selos"><img src="img/pix.jpg" alt="PIX"><img src="img/cadastur.png" alt="Cadastur — Fazendo o turismo legal"></div></div>
+    <div><h3>Sobre Nós</h3>
+      <ul class="links"><li><a href="#/sobre">Sobre a pousada</a></li><li><a href="#/como-chegar">Como chegar</a></li>
+        <li><a href="#/certificado">Certificado</a></li><li><a href="#/politica">Política de Cancelamento</a></li>
+        <li><a href="#/fotos">Galeria de Fotos</a></li><li><a href="#/tarifario">Tarifário</a></li><li><a href="#/disponibilidade">Disponibilidade</a></li></ul></div>
+    <div><h3>Contato</h3>
+      <ul class="contatos">
+        <li><i class="fa fa-phone-alt"></i><a href="tel:61900000000">(61) 90000-0000</a></li>
+        <li><i class="fab fa-whatsapp"></i><a href="https://wa.me/5561900000000" target="_blank" rel="noopener">WhatsApp</a></li>
+        <li><i class="fab fa-instagram"></i><a href="https://instagram.com/guarabangalos" target="_blank" rel="noopener">@guarabangalos</a></li>
+      </ul></div>
+  </div></section>
+  <footer id="sp-footer"><div class="container rodape-base">
+    <span>© 2026 Guará Bangalôs — Hospedagem Ecolodge · site de demonstração</span>
+    <nav><a href="#/politica">Política de cancelamento</a><a href="#/contato">Contato</a><a href="#/login">Área da pousada</a></nav>
+  </div></footer>
+</div>
+
+<div id="veu" onclick="document.body.classList.remove('menu-aberto')"></div>
+<aside id="offcanvas"><a href="#" class="fechar" aria-label="Fechar" onclick="event.preventDefault();document.body.classList.remove('menu-aberto')"><i class="fa fa-times"></i></a><div class="oc-menu"></div></aside>
+<a href="#" id="go-top" aria-label="Voltar ao topo" onclick="event.preventDefault();scrollTo({top:0,behavior:'smooth'})"><i class="fa fa-angle-up"></i></a>
+<div id="lightbox"><img alt=""><button class="ant" aria-label="Anterior">‹</button><button class="prox" aria-label="Próxima">›</button><button class="fx" aria-label="Fechar">×</button><span class="cont"></span></div>
+
+<script src="cms.js"></script>
+<script src="app.js"></script>
+<script src="conta.js"></script>
+<script src="demo.js"></script>
+<script src="admin.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
