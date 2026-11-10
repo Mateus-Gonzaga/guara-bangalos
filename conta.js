@@ -634,13 +634,14 @@ window.abrirEmail = titulo => {
 
 // ---------- menu conforme quem está logado ----------
 function atualizarMenu() {
-  const s = sessao(), link = $('#link-login');
-  $('#menu .extra')?.remove();
-  if (s?.tipo === 'admin') { link.textContent = 'Gestão'; link.href = '#/gestao'; }
-  else if (s?.tipo === 'hospede') { link.textContent = 'Área do hóspede'; link.href = '#/minhas-reservas'; }
-  else { link.textContent = 'Entrar'; link.href = '#/login'; }
+  // o acesso (Entrar / Área do hóspede / Gestão) fica só no rodapé
+  const s = sessao(), link = $('#link-login'); if (!link) return;
+  document.querySelectorAll('#sp-footer .extra').forEach(e => e.remove());
+  const rot = s?.tipo === 'admin' ? 'Gestão' : s?.tipo === 'hospede' ? 'Área do hóspede' : 'Entrar (hóspede ou pousada)';
+  link.href = s?.tipo === 'admin' ? '#/gestao' : s?.tipo === 'hospede' ? '#/minhas-reservas' : '#/login';
+  link.querySelector('span').textContent = rot;
   if (s) link.insertAdjacentHTML('afterend', '<a href="#" class="extra" onclick="event.preventDefault();sair()">Sair</a>');
-  $('#offcanvas .oc-menu').innerHTML = $('#menu').innerHTML.replace('id="link-login"', '');
+  $('#offcanvas .oc-menu').innerHTML = $('#menu').innerHTML;
 }
 window.atualizarMenu = atualizarMenu;
 // a primeira renderização acontece no fim de admin.js

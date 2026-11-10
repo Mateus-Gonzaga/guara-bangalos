@@ -637,3 +637,11 @@ input, select, textarea { border-color:var(--borda-campo); }
   .rh-card img { width:80px; height:80px; }
   .rh-linha1 { flex-direction:column; gap:4px; }
 }
+
+/* acesso (Entrar) só no rodapé */
+.rodape-base .acesso { display:inline-flex; align-items:center; gap:14px; }
+.rodape-base .link-entrar { display:inline-flex; align-items:center; gap:7px; border:1px solid rgba(217,160,102,.55); border-radius:20px; padding:5px 14px; opacity:1; color:#F3E7DC; }
+.rodape-base .link-entrar:hover { background:rgba(217,160,102,.15); text-decoration:none; color:#fff; }
+.rodape-base .link-entrar i { color:#D9A066; }
+@media (max-width:640px) { .rodape-base .acesso { flex-basis:100%; } }
+#sp-footer { padding-bottom:68px; }
