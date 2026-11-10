@@ -289,7 +289,31 @@ P.disponibilidade = q => {
 
 const mapaURL = () => `https://maps.google.com/maps?q=${encodeURIComponent(CMS.local.lat + ',' + CMS.local.lng)}&z=13&hl=pt-BR&output=embed`;
 const mapa = () => `<div class="mapa"><iframe loading="lazy" title="Mapa" src="${mapaURL()}"></iframe></div>`;
-P['como-chegar'] = () => artigo('Como chegar', 0, null, `<p>Conheça nossa localização no mapa:</p>${mapa()}`);
+P['como-chegar'] = () => {
+  const L = CMS.local, C = CMS.contato, dest = encodeURIComponent(L.lat + ',' + L.lng);
+  const msg = encodeURIComponent(`Olá! Estou a caminho do ${CMS.marca.nome} e preciso de ajuda com o trajeto.`);
+  return banda('Como chegar', 'Como chegar', 'Endereço, trajeto e atalhos para o GPS.') + `<section class="pagina-texto"><div class="container">
+    <div class="cc">
+      <div class="cc-info">
+        <h2>Endereço</h2>
+        <address>${esc(L.endereco).replace(/\n/g, '<br>')}</address>
+        <div class="cc-botoes">
+          <a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${dest}" target="_blank" rel="noopener"><i class="fa fa-route"></i> Abrir rota no Google Maps</a>
+          <a class="btn btn-claro" href="https://waze.com/ul?ll=${dest}&navigate=yes" target="_blank" rel="noopener"><i class="fab fa-waze"></i> Waze</a>
+          <button type="button" class="btn btn-claro" onclick="navigator.clipboard.writeText(CMS.local.enderecoCompleto);toast('Endereço copiado')"><i class="far fa-copy"></i> Copiar endereço</button>
+        </div>
+        <h2>Trajeto</h2>
+        <ol class="trajeto claro">${L.passos.filter(x => x.titulo).map((x, k, a) => `<li class="${k === a.length - 1 ? 'chegada' : ''}"><b>${esc(x.titulo)}</b><span>${esc(x.sub)}</span></li>`).join('')}</ol>
+      </div>
+      <div class="cc-mapa"><iframe loading="lazy" title="Mapa com a localização" src="${mapaURL()}"></iframe></div>
+    </div>
+    <div class="cc-dicas">
+      <div><i class="far fa-clock"></i><span><b>Check-in a partir das 15h</b><small>Check-out até as 12h. Avise o horário previsto de chegada.</small></span></div>
+      <div><i class="fa fa-signal"></i><span><b>Sinal de celular pode falhar</b><small>Baixe o mapa da região para usar sem internet.</small></span></div>
+      <a href="https://wa.me/${esc(C.whatsapp)}?text=${msg}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i><span><b>Perdeu o caminho?</b><small>Chame no WhatsApp ${esc(C.telefone)}</small></span></a>
+    </div>
+  </div></section>`;
+};
 
 P.contato = () => {
   const C = CMS.contato, tel = C.telefone.replace(/\D/g, '');

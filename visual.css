@@ -406,3 +406,25 @@ input, select, textarea { border-color:var(--borda-campo); }
 /* menu: sem moldura de foco ao clicar com o mouse */
 #menu a:focus:not(:focus-visible) { outline:none; }
 #menu a:focus-visible { outline:2px solid var(--roxo); outline-offset:-6px; }
+
+/* ===== página Como chegar ===== */
+.cc { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr); gap:36px; align-items:stretch; }
+.cc-info h2 { font-size:24px; margin:0 0 10px; }
+.cc-info h2 + address { font-style:normal; font-size:18px; line-height:1.55; margin-bottom:18px; }
+.cc-botoes { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:30px; }
+.cc-botoes .btn { display:inline-flex; align-items:center; gap:7px; font-size:15px; }
+.trajeto.claro::before { border-left-color:#C98A62; }
+.trajeto.claro li::before { background:#fff; border-color:#C98A62; }
+.trajeto.claro li.chegada::before { background:var(--roxo); border-color:#fff; box-shadow:0 0 0 4px rgba(160,82,45,.25); }
+.trajeto.claro b { color:var(--texto); }
+.trajeto.claro span { color:var(--suave); }
+.cc-mapa { min-height:460px; border:1px solid var(--linha); border-radius:8px; overflow:hidden; }
+.cc-mapa iframe { width:100%; height:100%; min-height:460px; border:0; display:block; }
+.cc-dicas { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:28px; }
+.cc-dicas > * { display:flex; gap:12px; align-items:flex-start; background:var(--nevoa); border-radius:6px; padding:16px 18px; color:var(--texto); }
+.cc-dicas i { font-size:20px; color:var(--roxo); margin-top:2px; width:22px; text-align:center; }
+.cc-dicas a i { color:#1f7a46; }
+.cc-dicas b { display:block; font-size:15px; }
+.cc-dicas small { color:var(--suave); font-size:13.5px; }
+.cc-dicas a:hover { background:#EFE6DC; color:var(--texto); }
+@media (max-width:900px) { .cc { grid-template-columns:1fr; } .cc-mapa, .cc-mapa iframe { min-height:340px; } .cc-dicas { grid-template-columns:1fr; } }
