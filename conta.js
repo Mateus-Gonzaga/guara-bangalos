@@ -493,25 +493,31 @@ window.trocarSenha = async f => {
   $('#ret-rec').innerHTML = '<p class="aviso">Senha alterada. <a href="#/login">Entrar agora</a></p>';
 };
 
+// ---------- Área do hóspede: cabeçalho com abas (Minhas reservas / Meus dados) ----------
+const areaHospede = (h, aba, corpo) => banda('Área do hóspede', 'Área do hóspede') + `<section class="pagina-texto"><div class="container area-h">
+  <div class="ah-topo"><div class="ah-ola"><span class="ah-avatar" aria-hidden="true">${esc(h.nome.trim().charAt(0).toUpperCase())}</span><div><b>Olá, ${esc(h.nome.split(' ')[0])}</b><small>${esc(h.email)}</small></div></div>
+    <nav class="ah-abas" aria-label="Área do hóspede"><a href="#/minhas-reservas" class="${aba === 'reservas' ? 'on' : ''}"><i class="far fa-calendar-check"></i> Minhas reservas</a><a href="#/meus-dados" class="${aba === 'dados' ? 'on' : ''}"><i class="far fa-user"></i> Meus dados</a><button type="button" onclick="sair()"><i class="fa fa-sign-out-alt"></i> Sair</button></nav></div>
+  ${corpo}</div></section>`;
+const diasAte = iso => Math.round((new Date(iso + 'T12:00') - new Date(hoje() + 'T12:00')) / 864e5);
+const podeCancelar = r => r.status === 'aguardando' || (r.status !== 'cancelada' && diasAte(r.entrada) >= 15);
+
 // ----- Meus dados (melhoria) -----
 P['meus-dados'] = () => {
   const h = hospedeAtual(); if (!h) return irParaLogin();
-  return banda('Meus dados') + `<section class="page-body"><div class="container"><div class="cadastro">
-  <div class="ola"><a href="#/minhas-reservas">← Minhas reservas</a><button class="btn btn-sm btn-sec" onclick="sair()">Sair</button></div>
-  <form onsubmit="event.preventDefault();salvarDados(this)" novalidate>
+  return areaHospede(h, 'dados', `<div class="ah-dados"><section class="ah-caixa"><h2>Dados pessoais</h2>
+  <form class="cadastro" onsubmit="event.preventDefault();salvarDados(this)" novalidate>
     <label>Nome completo:<input name="nome" value="${esc(h.nome)}" required></label>
     <label>CPF:<input value="${fmtCPF(h.cpf)}" disabled></label>
     <label>Celular:<input type="tel" name="celular" value="${esc(h.celular)}" oninput="mascaraCel(this)" required></label>
     <label>E-mail:<input type="email" name="email" value="${esc(h.email)}" required></label>
     <label class="estado">Estado:<select name="estado"><option value="">Selecione...</option>${ESTADOS.map(e => `<option ${e === h.estado ? 'selected' : ''}>${e}</option>`).join('')}</select></label>
-    <button class="btn">Salvar</button><div id="ret-dados"></div></form>
-  <hr><h3 style="font-size:20px">Alterar senha</h3>
-  <form onsubmit="event.preventDefault();alterarSenha(this)" novalidate>
+    <button class="btn">Salvar dados</button><div id="ret-dados"></div></form></section>
+  <section class="ah-caixa"><h2>Alterar senha</h2>
+  <form class="cadastro" onsubmit="event.preventDefault();alterarSenha(this)" novalidate>
     <label>Senha atual:${campoSenha('atual', 'required autocomplete="current-password"')}</label>
     <label>Nova senha:${campoSenha('senha', 'required minlength="6" autocomplete="new-password" oninput="medirSenha(this)"')}<div class="forca" data-n=""><i></i><i></i><i></i><i></i><span></span></div></label>
     <label>Confirme a nova senha:${campoSenha('conf', 'required autocomplete="new-password"')}</label>
-    <button class="btn">Alterar senha</button><div id="ret-senha"></div></form>
-</div></div></section>`;
+    <button class="btn">Alterar senha</button><div id="ret-senha"></div></form></section></div>`);
 };
 window.salvarDados = f => {
   const d = Object.fromEntries(new FormData(f)); limparErros(f);
@@ -539,21 +545,38 @@ window.alterarSenha = async f => {
 // ---------- Minhas reservas ----------
 P['minhas-reservas'] = () => {
   const h = hospedeAtual(); if (!h) return irParaLogin();
-  const rs = db.get('reservas').filter(r => r.hospede === h.id).sort((a, b) => b.entrada.localeCompare(a.entrada));
-  return banda('Minhas reservas') + `<section class="page-body"><div class="container">
-    <div class="ola"><span>Olá, <b>${esc(h.nome)}</b> · ${esc(h.email)}</span><span><a class="btn btn-sm" href="#/meus-dados"><i class="far fa-user"></i> Meus dados</a> <button class="btn btn-sm btn-sec" onclick="sair()">Sair</button></span></div>
-    ${rs.length ? `<table><tr><th>Código</th><th>Unidade</th><th>Período</th><th>Total</th><th>Situação</th><th></th></tr>
-    ${rs.map(r => `<tr><td>${r.id}</td><td>${unidade(r.unidade).nome}</td><td>${dBR(r.entrada)} – ${dBR(r.saida)}</td><td>${fmt(r.total)}</td><td>${selo(r.status)}</td>
-      <td class="acoes"><a class="btn btn-sm" href="#/confirmacao/${r.id}">${r.status === 'aguardando' ? 'Pagar' : 'Ver'}</a>
-      ${r.status !== 'cancelada' ? `<button class="btn btn-sm btn-sec" onclick="cancelarMinha('${r.id}')">Cancelar</button>` : ''}</td></tr>`).join('')}</table>`
-    : '<p>Você ainda não tem reservas. <a href="#/reservas">Fazer uma reserva</a></p>'}
-  </div></section>`;
+  const rs = db.get('reservas').filter(r => r.hospede === h.id);
+  const d = hoje();
+  const proximas = rs.filter(r => r.status !== 'cancelada' && r.saida >= d).sort((a, b) => a.entrada.localeCompare(b.entrada));
+  const anteriores = rs.filter(r => r.status !== 'cancelada' && r.saida < d).sort((a, b) => b.entrada.localeCompare(a.entrada));
+  const canceladas = rs.filter(r => r.status === 'cancelada').sort((a, b) => b.entrada.localeCompare(a.entrada));
+  const nomeUn = r => (unidade(r.unidade) || { nome: 'Unidade' }).nome, fotoUn = r => (unidade(r.unidade) || { fotos: [] }).fotos[0] || '';
+  const destaque = proximas[0];
+  const quando = r => { const n = diasAte(r.entrada); return r.entrada <= d ? 'Hospedado agora' : n === 1 ? 'Amanhã' : `Faltam ${n} dias`; };
+  const acoes = (r, grande) => `${r.status === 'aguardando' ? `<a class="btn ${grande ? '' : 'btn-sm'}" href="#/confirmacao/${r.id}"><i class="fa fa-qrcode"></i> Pagar sinal</a>` : `<a class="btn btn-claro ${grande ? '' : 'btn-sm'}" href="#/confirmacao/${r.id}">Ver reserva</a>`}
+    ${podeCancelar(r) ? `<button class="link-acao" onclick="cancelarMinha('${r.id}')">Cancelar</button>` : ''}`;
+  const cartao = r => `<article class="rh-card ${r.status}"><img src="${fotoUn(r)}" alt="" loading="lazy"><div class="rh-info">
+      <div class="rh-linha1"><h3>${esc(nomeUn(r))}</h3>${selo(r.status)}</div>
+      <p class="rh-datas"><i class="far fa-calendar"></i> ${dBR(r.entrada)} a ${dBR(r.saida)} · ${noites(r.entrada, r.saida).length} noite(s)</p>
+      <p class="rh-total">${fmt(r.total)} <small>· código ${r.id}</small></p>
+      <div class="rh-acoes">${r.status === 'cancelada' ? '' : acoes(r)}</div></div></article>`;
+  const grupo = (tit, lista) => lista.length ? `<section class="rh-grupo"><h2>${tit} <span>${lista.length}</span></h2><div class="rh-lista">${lista.map(cartao).join('')}</div></section>` : '';
+  const msg = destaque ? encodeURIComponent(`Olá! Tenho a reserva ${destaque.id} (${nomeUn(destaque)}, ${dBR(destaque.entrada)}).`) : '';
+  const hero = destaque ? `<section class="rh-destaque">
+      <div class="rh-foto" style="background-image:url('${fotoUn(destaque)}')"><span class="rh-quando">${quando(destaque)}</span></div>
+      <div class="rh-dest-info"><p class="rh-rotulo">Sua próxima estadia</p><h2>${esc(nomeUn(destaque))}</h2>
+        <div class="rh-datas-g"><div><span>Entrada</span><b>${dBR(destaque.entrada)}</b><small>a partir das 15h</small></div><div><span>Saída</span><b>${dBR(destaque.saida)}</b><small>até as 12h</small></div></div>
+        <p class="rh-status">${selo(destaque.status)} <span>${destaque.status === 'aguardando' ? `Pague o sinal de <b>${fmt(destaque.sinal || destaque.total / 2)}</b> para garantir as datas.` : destaque.status === 'comprovante' ? 'Recebemos seu comprovante. Vamos confirmar em breve.' : `Restante no check-in: <b>${fmt(destaque.total - (destaque.sinal || destaque.total / 2))}</b>.`}</span></p>
+        <div class="rh-dest-acoes">${acoes(destaque, true)}<a class="btn btn-claro" href="#/como-chegar"><i class="fa fa-route"></i> Como chegar</a><a class="btn btn-claro" target="_blank" rel="noopener" href="https://wa.me/${esc(CMS.contato.whatsapp)}?text=${msg}"><i class="fab fa-whatsapp"></i> Falar com a pousada</a></div>
+      </div></section>` : `<section class="rh-vazio"><i class="far fa-calendar-plus"></i><h2>Nenhuma estadia marcada</h2><p>Escolha um bangalô e as datas. O total aparece na hora.</p><a class="btn" href="#/reservas">Fazer uma reserva</a></section>`;
+  return areaHospede(h, 'reservas', hero + grupo('Próximas', proximas.slice(1)) + grupo('Anteriores', anteriores) + grupo('Canceladas', canceladas)
+    + (rs.length ? `<p class="rh-politica">Cancelamento sem custo até 15 dias antes do check-in. <a href="#/politica">Ver política</a></p>` : ''));
 };
 window.cancelarMinha = id => {
   const l = db.get('reservas'), r = l.find(x => x.id === id);
   const dias = Math.round((new Date(r.entrada + 'T12:00') - new Date()) / 864e5);
   if (dias < 15 && r.status !== 'aguardando') return alert(`Faltam ${dias} dia(s) para o check-in. Pela política, o cancelamento precisa de 15 dias de antecedência — fale conosco pelo WhatsApp.`);
-  if (!confirm('Cancelar esta reserva?')) return;
+  if (!confirm(`Cancelar a reserva ${r.id} (${dBR(r.entrada)} a ${dBR(r.saida)})? Essa ação não pode ser desfeita.`)) return;
   r.status = 'cancelada'; db.set('reservas', l);
   enviarEmail(r.email, `[Guará Bangalôs] Reserva ${r.id} cancelada`, `<p>Sua reserva foi cancelada:</p><p>${linhaReserva(r)}</p><p>Se já pagou o sinal, você pode deixar o valor como crédito, remarcar ou pedir devolução pelo WhatsApp.</p>`);
   enviarEmail(POUSADA_EMAIL, `[Site] Reserva ${r.id} cancelada pelo hóspede`, `<p>${linhaReserva(r)}</p>`);
@@ -614,7 +637,7 @@ function atualizarMenu() {
   const s = sessao(), link = $('#link-login');
   $('#menu .extra')?.remove();
   if (s?.tipo === 'admin') { link.textContent = 'Gestão'; link.href = '#/gestao'; }
-  else if (s?.tipo === 'hospede') { link.textContent = 'Minhas reservas'; link.href = '#/minhas-reservas'; }
+  else if (s?.tipo === 'hospede') { link.textContent = 'Área do hóspede'; link.href = '#/minhas-reservas'; }
   else { link.textContent = 'Entrar'; link.href = '#/login'; }
   if (s) link.insertAdjacentHTML('afterend', '<a href="#" class="extra" onclick="event.preventDefault();sair()">Sair</a>');
   $('#offcanvas .oc-menu').innerHTML = $('#menu').innerHTML.replace('id="link-login"', '');
