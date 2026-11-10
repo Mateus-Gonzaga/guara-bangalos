@@ -158,10 +158,10 @@ P.sobre = () => artigo('Sobre a pousada', 0, null, paragrafos(CMS.paginas.sobre)
 const aPartirDe = u => Math.min(...[+CMS.precos.semana, +CMS.precos.fds].map(v => Math.round(v * (+u.ajuste || 100) / 100)));
 const ICONES = { wifi: 'fa-wifi', piscina: 'fa-swimmer', estacionamento: 'fa-parking', 'ar-condicionado': 'fa-snowflake', acessibilidade: 'fa-wheelchair', cozinha: 'fa-utensils', ofurô: 'fa-hot-tub' };
 const icone = a => { const k = Object.keys(ICONES).find(k => a.toLowerCase().includes(k)); return `<i class="fa ${k ? ICONES[k] : 'fa-check'}" aria-hidden="true"></i>`; };
-const frases = u => u.resto.filter(l => /\.$/.test(l) && l.length > 40 && !/^(Check-|Trabalhamos|Pagamentos|Café da manhã)/.test(l));
+const frases = u => u.resto.filter(l => /\.$/.test(l) && l.length > 40 && !/^(Check-|Trabalhamos|Pagamento|Café da manhã)/.test(l));
 P.acomodacoes = () => banda('Acomodações', 'Acomodações', `${UN.length} unidades no cerrado, perto do Vale da Lua.`) + `<section class="pagina-texto"><div class="container lista-unidades">
   ${UN.map(u => `<article class="un-card">
-    <a class="un-foto" href="#/unidade/${u.id}" aria-label="Ver ${esc(u.nome)}"><img src="${u.fotos[0] || ''}" alt="" loading="lazy"></a>
+    <a class="un-foto" href="#/unidade/${u.id}" aria-label="Ver ${esc(u.nome)}"><img src="${u.fotos[0] || ''}" alt="" loading="eager" decoding="async"></a>
     <div class="un-info">
       <h2><a href="#/unidade/${u.id}">${esc(u.nome)}</a></h2>
       <p class="un-meta">${esc(u.categoria)}, até ${u.capacidade} pessoas</p>
@@ -318,7 +318,7 @@ P['como-chegar'] = () => {
 P.contato = () => {
   const C = CMS.contato, tel = C.telefone.replace(/\D/g, '');
   const msg = encodeURIComponent(`Olá! Vim pelo site do ${CMS.marca.nome} e gostaria de mais informações.`);
-  return banda('Contato', 'Contato', 'Tire dúvidas, peça um orçamento para grupos ou combine detalhes da sua estadia.') + `<section class="pagina-texto"><div class="container contato">
+  return banda('Contato', 'Contato', 'Tire dúvidas, peça um orçamento para grupos ou combine detalhes da sua estadia.') + `<section class="pagina-texto"><div class="container ct-pagina">
     <form class="ct-form" onsubmit="event.preventDefault();enviarContato(this)" novalidate>
       <h2>Envie uma mensagem</h2>
       <p class="peq">${esc(CMS.paginas.contato)}</p>
