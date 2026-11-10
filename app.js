@@ -381,7 +381,7 @@ function aplicarGlobais() {
   const loc = $('#localizacao'); if (loc) loc.hidden = !/^#?\/?$/.test(location.hash.split('?')[0]);
   document.querySelectorAll('.marca .logo-image').forEach(el => { const u = urlMidia(CMS.marca.logo); if (el.getAttribute('src') !== u) el.src = u; });
   const pg = $('#sp-bottom .col-pag p'); if (pg) pg.textContent = CMS.rodape.pagamento;
-  document.querySelectorAll('.marca-nome').forEach(el => el.innerHTML = `${esc(CMS.marca.nome)}<small>${esc(CMS.marca.slogan)}</small>`);
+  document.querySelectorAll('.marca-nome').forEach(el => el.innerHTML = esc(CMS.marca.nome) + (CMS.marca.slogan ? `<small>${esc(CMS.marca.slogan)}</small>` : ''));
   const top = $('#sp-top-bar .contato'); if (top) top.innerHTML = `<i class="fa fa-mobile-alt"></i> <a href="tel:${C.telefone.replace(/\D/g, '')}">${esc(C.telefone)}</a>`;
   const soc = $('#sp-top-bar .social'); if (soc) soc.innerHTML = `<li><a href="https://instagram.com/${esc(C.instagram)}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a></li><li><a href="https://wa.me/${esc(C.whatsapp)}" target="_blank" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a></li>`;
   const ct = $('#sp-bottom .contatos'); if (ct) ct.innerHTML = `<li><i class="fa fa-phone-alt"></i><a href="tel:${C.telefone.replace(/\D/g, '')}">${esc(C.telefone)}</a></li>
@@ -398,7 +398,7 @@ function aplicarGlobais() {
       <button class="loc-sec" type="button" onclick="navigator.clipboard.writeText(CMS.local.enderecoCompleto);toast('Endereço copiado')"><i class="far fa-copy" aria-hidden="true"></i> Copiar endereço</button></div>`;
     const fr = $('#localizacao iframe'); if (fr && fr.getAttribute('src') !== mapaURL()) fr.src = mapaURL();
   }
-  document.title = (typeof ehRotaAdmin === 'function' && ehRotaAdmin() ? 'Gestão — ' : '') + CMS.marca.nome + ' — ' + CMS.marca.slogan;
+  document.title = (typeof ehRotaAdmin === 'function' && ehRotaAdmin() ? 'Gestão — ' : '') + CMS.marca.nome + (CMS.marca.slogan ? ' — ' + CMS.marca.slogan : '');
 }
 
 // fadeInUp ao entrar na tela (equivalente ao sppb-wow do original)

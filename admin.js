@@ -150,7 +150,7 @@ const atualizarMenuSite = atualizarMenu;
 window.atualizarMenu = atualizarMenu = function () {
   document.body.classList.toggle('modo-admin', ehRotaAdmin() || ehRotaLogin());
   document.body.classList.remove('adm-aberto');
-  document.title = ehRotaAdmin() ? 'Gestão — Guará Bangalôs' : 'Guará Bangalôs — Hospedagem Ecolodge';
+  document.title = ehRotaAdmin() ? 'Gestão — Guará Bangalôs' : CMS.marca.nome;
   atualizarMenuSite();
   // no site, a pousada logada vê "Gestão" no menu; hóspede/visitante seguem como antes
 };

@@ -90,7 +90,7 @@ window.descartar = () => { const f = document.querySelector('.ed-form'); if (f) 
 // ---------- seções ----------
 const ED = {};
 ED.inicio = () => formulario('inicio',
-  bloco('Nome e topo', `<div class="ed-2">${campo('marca.nome', 'Nome da pousada')}${campo('marca.slogan', 'Frase abaixo do nome', 'Aparece no cabeçalho.')}</div>
+  bloco('Nome e topo', `<div class="ed-2">${campo('marca.nome', 'Nome da pousada')}${campo('marca.slogan', 'Frase abaixo do nome (opcional)', 'Deixe vazio para mostrar só o nome no cabeçalho.')}</div>
     ${campo('home.titulo', 'Título grande do topo')}${texto('home.subtitulo', 'Frase do topo', '', 2)}${foto('home.heroFoto', 'Foto do topo')}`, 'Primeira coisa que o visitante vê ao abrir o site. O nome também aparece no cabeçalho de todas as páginas.') +
   bloco('Seção dos chalés', `${campo('home.chalesTitulo', 'Título')}${texto('home.chalesTexto', 'Texto', 'Deixe uma linha em branco para separar parágrafos.')}${foto('home.chalesFoto', 'Foto')}`, 'Logo abaixo da busca de datas, na página inicial.') +
   bloco('Destaques', `<div class="ed-2">${campo('home.destaquesTitulo', 'Título')}${campo('home.destaquesTexto', 'Frase')}</div>

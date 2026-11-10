@@ -29,7 +29,7 @@ function unidadesPadrao() {
   ];
 }
 const CMS_PADRAO = () => ({
-  marca: { nome: 'Guará Bangalôs', slogan: 'Hospedagem Ecolodge', logo: 'img/logo-guara.png', logoDestaque: 'img/logo-guara-pedra.jpg' },
+  marca: { nome: 'Guará Bangalôs', slogan: '', logo: 'img/logo-guara.png', logoDestaque: 'img/logo-guara-pedra.jpg' },
   rodape: { pagamento: 'Trabalhamos com PIX ou transferências.' },
   contato: { telefone: '(61) 90000-0000', whatsapp: '5561900000000', instagram: 'guarabangalos', email: 'reservas@guarabangalos.test' },
   home: {

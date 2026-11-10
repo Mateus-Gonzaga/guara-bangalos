@@ -645,3 +645,22 @@ input, select, textarea { border-color:var(--borda-campo); }
 .rodape-base .link-entrar i { color:#D9A066; }
 @media (max-width:640px) { .rodape-base .acesso { flex-basis:100%; } }
 #sp-footer { padding-bottom:68px; }
+
+/* ===== cantos arredondados: botões e imagens ===== */
+:root { --raio-btn:8px; --raio-img:12px; }
+.btn, .sppb-btn, .btn-sm, .btn-outline, .cal-limpar, .ver-todas, .rs-ir, .loc-principal, .busca2-btn { border-radius:var(--raio-btn) !important; }
+.btn.busca2-btn { border-radius:0 var(--raio-btn) var(--raio-btn) 0 !important; }
+.busca2 { border-radius:var(--raio-btn); overflow:hidden; }
+@media (max-width:991px) { .btn.busca2-btn { border-radius:0 0 var(--raio-btn) var(--raio-btn) !important; } }
+input, select, textarea, .rs-datas, .cal-datas, .rh-datas-g { border-radius:var(--raio-btn); }
+.campo2 input, .busca2 input { border-radius:0; }
+.chales .row2 img, .sec-piscina img, .feature img, .un-foto, .un-card, .rh-card img, .rh-destaque, .loc-mapa, .cc-mapa, .mapa iframe,
+.preco-card, .ct-form, .ct-lista, .ct-whats, .caixa-reserva, .bom-saber, .rs-cal, .rs-resumo, .rs-un, .rs-un img, .rs-un-topo img, .calendario,
+.cal-dias button, .cancelar-aviso, .cc-dicas > *, .ed-foto-box img, .ed-fotos figure, .adm-box, .kpi, .pn-hoje, .selos img { border-radius:var(--raio-img); }
+.un-card { overflow:hidden; }
+.un-foto { border-radius:0; }
+@media (max-width:860px) { .un-foto { border-radius:0; } }
+.mosaico { border-radius:var(--raio-img); }
+.mosaico .m-foto { border-radius:6px; }
+.tf-grade button, .tf-grade img { border-radius:8px; overflow:hidden; }
+#lightbox img { border-radius:8px; }
