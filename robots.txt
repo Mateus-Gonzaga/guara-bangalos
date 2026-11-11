@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://guarabangalos.com.br/sitemap.xml

@@ -62,7 +62,6 @@ let cal = { u: null, mes: null, ent: null, sai: null, msg: '', ad: 2, cr: 0, bb:
 const MESES_LONGOS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const primeiroDoMes = iso => iso.slice(0, 8) + '01';
 const somaMes = (iso, n) => { const d = new Date(iso.slice(0, 7) + '-01T12:00'); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); };
-const ehFeriadoLongo = d => PROLONGADOS_().some(([a, b]) => d >= a && d <= b);
 const curto = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
 
 function estadoDia(u, d) {

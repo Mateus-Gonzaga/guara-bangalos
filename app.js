@@ -20,7 +20,6 @@ function montarUnidades() {
 }
 montarUnidades();
 const unidade = id => UN.find(u => u.id === +id);
-const resumoUn = u => u.resto.filter(l => /\.$/.test(l)).slice(0, 3).join(' ');
 
 // ---------- preços (os que o motor de reservas do site mostra hoje) ----------
 // casal: semana 550 · sexta a domingo 680 · feriados e natal 750 · réveillon 900
@@ -57,17 +56,6 @@ function diaOcupado(uid, d) {
 // ---------- componentes ----------
 const hoje = () => new Date().toISOString().slice(0, 10);
 const amanha = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); };
-function opts(n, sel, ini = 0) { let s = ''; for (let i = ini; i <= n; i++) s += `<option ${i == sel ? 'selected' : ''}>${i}</option>`; return s; }
-function formBusca(q = {}) {
-  const ic = (i, campo) => `<div class="campo"><i class="fa fa-${i}"></i>${campo}</div>`;
-  return `<form class="busca" onsubmit="event.preventDefault();buscar(this)">
-    <label>Entrada${ic('calendar', `<input type="date" name="entrada" min="${hoje()}" value="${q.entrada || hoje()}" required>`)}</label>
-    <label>Saída${ic('calendar', `<input type="date" name="saida" min="${amanha()}" value="${q.saida || amanha()}" required>`)}</label>
-    <label>Adultos${ic('bed', `<input type="number" name="adultos" min="1" max="8" value="${q.adultos || 2}">`)}</label>
-    <label><span>Crianças <small>(1 a 12 anos)</small></span>${ic('bed', `<input type="number" name="criancas" min="0" max="6" value="${q.criancas || 0}">`)}</label>
-    <label><span>Bebê <small>(1 a 12 meses)</small></span>${ic('bed', `<input type="number" name="bebe" min="0" max="3" value="${q.bebe || 0}">`)}</label>
-    <button class="btn">Reservar</button></form>`;
-}
 window.buscar = f => {
   const p = new URLSearchParams(new FormData(f));
   if (p.get('saida') <= p.get('entrada')) return alert('A saída precisa ser depois da entrada.');
@@ -101,7 +89,6 @@ addEventListener('keydown', e => {
   if (!$('#lightbox').classList.contains('on')) return;
   if (e.key === 'ArrowLeft') lbPasso(-1); if (e.key === 'ArrowRight') lbPasso(1); if (e.key === 'Escape') { $('#lightbox').classList.remove('on'); $('#lightbox video')?.pause(); }
 });
-const fotosGrid = fotos => `<div class="galeria">${fotos.map(f => `<img src="${f}" loading="lazy" onclick="zoom(this.src,this)" alt="">`).join('')}</div>`;
 
 // ---------- páginas ----------
 const P = {};
@@ -235,27 +222,7 @@ P.tarifario = () => {
 };
 
 // ---------- Reservas: cartões de datas como no motor de reservas original ----------
-const DIAS = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
-const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const somaDia = (iso, n) => { const d = new Date(iso + 'T12:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
-let selecao = {};
-function cartoesDatas(u, inicio, dias = 60) {
-  let h = '', linha = '';
-  for (let k = 0; k < dias; k++) {
-    const d = somaDia(inicio, k), dt = new Date(d + 'T12:00'), dow = dt.getDay();
-    if (dow === 1 && linha) { h += `<div class="linha-datas">${linha}</div>`; linha = ''; }
-    const antes = diaOcupado(u.id, somaDia(d, -1)), noite = diaOcupado(u.id, d);
-    const sel = selecao.u === u.id && (selecao.ent === d || selecao.sai === d) ? ' selecionado' : '';
-    const meio = selecao.u === u.id && selecao.sai && selecao.ent < d && selecao.sai > d ? ' meio' : '';
-    let base;
-    if (!antes && !noite) base = `<div class="saida-entrada disp"><span class="valor">${fmt(diaria(d, u).v)}</span><span class="select"></span></div>`;
-    else if (antes && noite) base = `<div class="saida-entrada indisp"><span>Não<br>Disponível</span></div>`;
-    else base = `<div class="saida-entrada misto"><span class="${antes ? 'indisp' : 'disp'}">Saída${antes ? '' : '<span class="select"></span>'}</span><span class="${noite ? 'indisp' : 'disp'}">Entrada${noite ? '' : '<span class="select"></span>'}</span></div>`;
-    const clic = antes && noite ? '' : `onclick="escolher(${u.id},'${d}',${!noite},${!antes})"`;
-    linha += `<div class="item-data${sel}${meio}" ${clic}><div class="topo"><span class="dia">${String(dt.getDate()).padStart(2, '0')}</span> <span class="mes">${MESES[dt.getMonth()]}</span><span class="semana">${DIAS[dow]}</span></div>${base}</div>`;
-  }
-  return h + `<div class="linha-datas">${linha}</div>`;
-}
 function calendario(uid, ano, mes) {
   const nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const ini = new Date(ano, mes, 1).getDay(), dias = new Date(ano, mes + 1, 0).getDate();
