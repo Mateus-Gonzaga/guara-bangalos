@@ -15,6 +15,11 @@ Configuração por variáveis de ambiente (em produção: /etc/guara-api.env):
   ADMIN_SENHA_HASH   gerado com: python3 api.py --hash-senha
   SITE_URL           ex.: https://guarabangalos.com.br
   CORS_ORIGENS       origens extras separadas por vírgula (ex.: o GitHub Pages)
+  WHATSAPP_NUMERO    celular da pousada com DDI e DDD, só números (ex.: 5561999998888)
+  WHATSAPP_MODO      evolution ou callmebot (vazio = sem aviso por WhatsApp)
+  EVOLUTION_URL, EVOLUTION_INSTANCIA, EVOLUTION_CHAVE   para o modo evolution (Evolution API)
+  CALLMEBOT_CHAVE    para o modo callmebot (grátis; a chave chega no WhatsApp do número cadastrado)
+  LEMBRETE_DIAS      quantos dias antes do check-in mandar o lembrete (padrão 3)
 """
 import base64, hashlib, hmac, json, mimetypes, os, re, secrets, sqlite3, sys, threading, time
 import urllib.request, urllib.error, urllib.parse
@@ -32,6 +37,13 @@ ADMIN_USUARIO = os.environ.get('ADMIN_USUARIO', 'admin').lower()
 ADMIN_SENHA_HASH = os.environ.get('ADMIN_SENHA_HASH', '')
 SITE_URL = os.environ.get('SITE_URL', 'https://guarabangalos.com.br').rstrip('/')
 CORS = {o.strip() for o in os.environ.get('CORS_ORIGENS', '').split(',') if o.strip()}
+WPP_NUMERO = re.sub(r'\D', '', os.environ.get('WHATSAPP_NUMERO', ''))
+WPP_MODO = os.environ.get('WHATSAPP_MODO', '').strip().lower() if WPP_NUMERO else ''
+EVO_URL = os.environ.get('EVOLUTION_URL', '').rstrip('/')
+EVO_INST = os.environ.get('EVOLUTION_INSTANCIA', '')
+EVO_CHAVE = os.environ.get('EVOLUTION_CHAVE', '')
+CMB_CHAVE = os.environ.get('CALLMEBOT_CHAVE', '')
+LEMBRETE_DIAS = int(os.environ.get('LEMBRETE_DIAS', '3'))
 MAX_CORPO = 8 * 1024 * 1024
 STATUS = {'aguardando': 'Aguardando pagamento', 'comprovante': 'Comprovante enviado', 'confirmada': 'Confirmada', 'cancelada': 'Cancelada'}
 
@@ -70,7 +82,12 @@ def criar_banco():
           assunto TEXT, datas TEXT, mensagem TEXT, lida INTEGER DEFAULT 0);
         CREATE TABLE IF NOT EXISTS cms (id INTEGER PRIMARY KEY CHECK (id = 1), conteudo TEXT, atualizado TEXT);
         CREATE TABLE IF NOT EXISTS auditoria (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT, quem TEXT, ip TEXT, acao TEXT, detalhe TEXT, resultado TEXT);
+        CREATE TABLE IF NOT EXISTS whatsapp (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT, texto TEXT, status TEXT);
         ''')
+        colunas = {r[1] for r in c.execute('PRAGMA table_info(reservas)')}
+        for col in ('lembrete_checkin', 'cobranca_sinal'):
+            if col not in colunas:
+                c.execute(f'ALTER TABLE reservas ADD COLUMN {col} TEXT')
 
 
 def auditar(req, acao, detalhe='', resultado='ok', quem=None):
@@ -174,6 +191,31 @@ def enviar_email(para, assunto, corpo, responder_para=None, anexos=None):
     threading.Thread(target=tarefa, daemon=True).start()
 
 
+# ---------------------------------------------------------------- aviso por WhatsApp para a pousada
+def avisar_whatsapp(texto):
+    """Manda uma mensagem curta para o WhatsApp da pousada (se configurado). Nunca trava o site."""
+    if not WPP_MODO:
+        return
+    def tarefa():
+        try:
+            if WPP_MODO == 'evolution':
+                req = urllib.request.Request(f'{EVO_URL}/message/sendText/{urllib.parse.quote(EVO_INST)}', method='POST',
+                                             data=json.dumps({'number': WPP_NUMERO, 'text': texto, 'textMessage': {'text': texto}}).encode(),
+                                             headers={'apikey': EVO_CHAVE, 'Content-Type': 'application/json', 'User-Agent': 'guara-api/1'})
+            else:
+                q = urllib.parse.urlencode({'phone': '+' + WPP_NUMERO, 'text': texto, 'apikey': CMB_CHAVE})
+                req = urllib.request.Request('https://api.callmebot.com/whatsapp.php?' + q, headers={'User-Agent': 'guara-api/1'})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                status = 'enviado' if r.status < 300 else f'erro {r.status}'
+        except urllib.error.HTTPError as e:
+            status = f'erro {e.code}'
+        except Exception as e:
+            status = f'erro: {e}'[:200]
+        with conexao() as c:
+            c.execute('INSERT INTO whatsapp (data,texto,status) VALUES (?,?,?)', (agora(), texto[:500], status))
+    threading.Thread(target=tarefa, daemon=True).start()
+
+
 def linha_reserva(r):
     hosp = f"{r['adultos']} adulto(s)" + (f", {r['criancas']} criança(s)" if r['criancas'] else '')
     return f"{esc(r['unidade_nome'])} · {dbr(r['entrada'])} a {dbr(r['saida'])} · {hosp} · total {moeda(r['total'])}"
@@ -270,7 +312,7 @@ def rota(metodo, padrao, quem=None):
 
 @rota('GET', '/api/saude')
 def saude(req):
-    return {'ok': True, 'email': bool(RESEND_KEY)}
+    return {'ok': True, 'email': bool(RESEND_KEY), 'whatsapp': bool(WPP_MODO)}
 
 
 @rota('GET', '/api/ocupacao')
@@ -515,6 +557,7 @@ def reservar(req):
                  f"<p>Nova pré-reserva de <b>{esc(r['nome'])}</b> ({esc(r['email'])}, {esc(r['telefone'])}):</p><p>{linha_reserva(r)}</p>"
                  f"<p>Chegada prevista: {esc(r['chegada'] or '—')} · Pagamento: {esc(r['pagamento'])}</p><p>Observações: {esc(r['obs'] or '—')}</p>"
                  f"<p><a href=\"{SITE_URL}/#/gestao?aba=reservas&busca={r['id']}\">Abrir na Gestão</a></p>", responder_para=r['email'])
+    avisar_whatsapp(f"🏡 Nova pré-reserva {r['id']}\n{r['nome']} · {r['telefone']}\n{r['unidade_nome']}: {dbr(r['entrada'])} a {dbr(r['saida'])}\nTotal {moeda(r['total'])} · sinal {moeda(r['sinal'])}\n{SITE_URL}/#/gestao?aba=reservas&busca={r['id']}")
     return publica_reserva(r)
 
 
@@ -545,6 +588,7 @@ def comprovante(req, rid):
                  f"<p>{esc(r['nome'])} enviou o comprovante <b>{esc(nome)}</b> (em anexo) da reserva:</p><p>{linha_reserva(r)}</p>"
                  f"<p>Sinal esperado: <b>{moeda(r['sinal'])}</b>. Confira o pagamento e confirme a reserva na <a href=\"{SITE_URL}/#/gestao\">Gestão</a>.</p>",
                  responder_para=r['email'], anexos=[{'filename': nome, 'content': base64.b64encode(req.corpo).decode()}])
+    avisar_whatsapp(f"📎 Comprovante recebido · reserva {rid}\n{r['nome']} · sinal esperado {moeda(r['sinal'])}\nConfira o pagamento e confirme na Gestão: {SITE_URL}/#/gestao")
     return {'ok': True}
 
 
@@ -556,6 +600,7 @@ def cancelar_reserva(c, r, por):
     else:
         enviar_email(r['email'], f"[Guará Bangalôs] Reserva {r['id']} cancelada", f"<p>Sua reserva foi cancelada:</p><p>{linha_reserva(r)}</p><p>Se já pagou o sinal, você pode deixar o valor como crédito, remarcar ou pedir devolução pelo WhatsApp.</p>")
         enviar_email(EMAIL_POUSADA, f"[Site] Reserva {r['id']} cancelada pelo hóspede", f"<p>{esc(r['nome'])} cancelou a reserva:</p><p>{linha_reserva(r)}</p>", responder_para=r['email'])
+        avisar_whatsapp(f"❌ Reserva {r['id']} cancelada pelo hóspede\n{r['nome']} · {r['unidade_nome']}: {dbr(r['entrada'])} a {dbr(r['saida'])}")
 
 
 def checa_politica(r):
@@ -609,6 +654,7 @@ def contato(req):
                  + (f"<p>Datas de interesse: {esc(d['datas'])}</p>" if d['datas'] else '')
                  + f"<p style=\"white-space:pre-wrap;background:#F5F0EA;padding:12px;border-radius:8px\">{esc(d['mensagem'])}</p><p>Para responder, é só responder este e-mail.</p>",
                  responder_para=d['email'])
+    avisar_whatsapp(f"✉️ Mensagem pelo site · {d['assunto'] or 'Contato'}\n{d['nome']} ({d['email']}{', ' + d['telefone'] if d['telefone'] else ''})\n{d['mensagem'][:300]}")
     return {'ok': True}
 
 
@@ -622,6 +668,8 @@ def admin_dados(req):
             'emails': [dict(m) for m in c.execute('SELECT * FROM emails ORDER BY data DESC LIMIT 300')],
             'contatos': [dict(m) for m in c.execute('SELECT * FROM contatos ORDER BY data DESC LIMIT 300')],
             'auditoria': [dict(m) for m in c.execute('SELECT * FROM auditoria ORDER BY id DESC LIMIT 300')],
+            'whatsapp': [dict(m) for m in c.execute('SELECT * FROM whatsapp ORDER BY id DESC LIMIT 100')],
+            'config': {'email': bool(RESEND_KEY), 'whatsapp': WPP_MODO or '', 'lembrete_dias': LEMBRETE_DIAS},
         }
 
 
@@ -665,6 +713,63 @@ def admin_lida(req, cid):
     with conexao() as c:
         c.execute('UPDATE contatos SET lida=1 WHERE id=?', (cid,))
     return {'ok': True}
+
+
+# ---------------------------------------------------------------- rotinas automáticas (a cada 30 min)
+def cms_local():
+    with conexao() as c:
+        cms = cms_atual(c) or {}
+    return cms.get('local') or {}, cms.get('contato') or {}
+
+
+def lembretes():
+    """Lembrete de check-in para reservas confirmadas e cobrança do sinal após 48 h sem pagamento."""
+    hoje = date.today()
+    local, contato = cms_local()
+    rota = f"https://www.google.com/maps/dir/?api=1&destination={local.get('lat')},{local.get('lng')}" if local.get('lat') else f'{SITE_URL}/#/como-chegar'
+    wpp = re.sub(r'\D', '', str(contato.get('whatsapp', '')))
+    with conexao() as c:
+        chegando = c.execute("SELECT * FROM reservas WHERE status='confirmada' AND lembrete_checkin IS NULL AND entrada >= ? AND entrada <= ?",
+                             (str(hoje), str(hoje + timedelta(days=LEMBRETE_DIAS)))).fetchall()
+        devendo = c.execute("SELECT * FROM reservas WHERE status='aguardando' AND cobranca_sinal IS NULL AND criada <= ? AND entrada >= ?",
+                            ((datetime.now(timezone.utc) - timedelta(hours=48)).isoformat().replace('+00:00', 'Z'), str(hoje))).fetchall()
+        for r in chegando:
+            c.execute('UPDATE reservas SET lembrete_checkin=? WHERE id=?', (agora(), r['id']))
+        for r in devendo:
+            c.execute('UPDATE reservas SET cobranca_sinal=? WHERE id=?', (agora(), r['id']))
+    for r in chegando:
+        dias = (date.fromisoformat(r['entrada']) - hoje).days
+        quando = 'hoje' if dias == 0 else 'amanhã' if dias == 1 else f'em {dias} dias'
+        endereco = esc(local.get('endereco', '')).replace('\n', '<br>')
+        enviar_email(r['email'], f"[Guará Bangalôs] Sua estadia começa {quando}!",
+                     f"<p>Olá, {esc(r['nome'].split()[0])}! Estamos te esperando.</p><p><b>{linha_reserva(r)}</b></p>"
+                     f"<p>Check-in a partir das 15h{', chegada prevista ' + esc(r['chegada']) if r['chegada'] else ''}. Check-out até as 12h.<br>"
+                     f"Restante a pagar no check-in: <b>{moeda(r['total'] - r['sinal'])}</b>.</p>"
+                     + (f"<p><b>Endereço</b><br>{endereco}</p>" if endereco else '')
+                     + f"<p><a href=\"{rota}\" style=\"background:#A0522D;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none\">Abrir a rota no mapa</a></p>"
+                     f"<p>Veja o passo a passo do caminho em <a href=\"{SITE_URL}/#/como-chegar\">{SITE_URL.replace('https://', '')}/#/como-chegar</a>.</p>"
+                     + (f"<p>Qualquer dúvida no caminho, chame no WhatsApp: <a href=\"https://wa.me/{wpp}\">wa.me/{wpp}</a>.</p>" if wpp else ''))
+    for r in devendo:
+        enviar_email(r['email'], f"[Guará Bangalôs] Falta o sinal da reserva {r['id']}",
+                     f"<p>Olá, {esc(r['nome'].split()[0])}!</p><p>Sua pré-reserva ainda está aguardando o pagamento do sinal:</p><p><b>{linha_reserva(r)}</b></p>"
+                     f"<p>Para garantir as datas, pague o sinal de <b>{moeda(r['sinal'])}</b> e envie o comprovante pelo site:</p>"
+                     f"<p><a href=\"{link_reserva(r)}\" style=\"background:#A0522D;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none\">Pagar o sinal</a></p>"
+                     f"<p>Se mudou de ideia, você pode cancelar a pré-reserva em Minhas reservas. Se já pagou, é só enviar o comprovante.</p>")
+    if devendo:
+        avisar_whatsapp('⏳ Sinal não pago há 48 h (cobrança enviada por e-mail):\n' + '\n'.join(f"{r['id']} · {r['nome']} · {dbr(r['entrada'])}" for r in devendo))
+    return len(chegando), len(devendo)
+
+
+def rotinas():
+    while True:
+        try:
+            a, b = lembretes()
+            if a or b:
+                print(f'rotinas: {a} lembrete(s) de check-in, {b} cobrança(s) de sinal', flush=True)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+        time.sleep(1800)
 
 
 # ---------------------------------------------------------------- servidor HTTP
@@ -781,5 +886,6 @@ if __name__ == '__main__':
         print(hash_senha(getpass.getpass('Senha da Gestão: ')))
         sys.exit()
     criar_banco()
+    threading.Thread(target=rotinas, daemon=True).start()
     print(f'Guará API em http://127.0.0.1:{PORTA}  (e-mail: {"Resend" if RESEND_KEY else "só registro"}; dados em {DADOS})', flush=True)
     ThreadingHTTPServer(('127.0.0.1', PORTA), Servidor).serve_forever()

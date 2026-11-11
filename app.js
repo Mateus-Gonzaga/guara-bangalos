@@ -14,7 +14,7 @@ async function carregarDados() {
   try {
     if (s?.tipo === 'admin') {
       const d = await api('/api/admin/dados');
-      db._d = { reservas: d.reservas, hospedes: d.hospedes, emails: d.emails, contatos: d.contatos, auditoria: d.auditoria };
+      db._d = { reservas: d.reservas, hospedes: d.hospedes, emails: d.emails, contatos: d.contatos, auditoria: d.auditoria, whatsapp: d.whatsapp, config: d.config };
       return;
     }
     const [ocup, eu] = await Promise.all([api('/api/ocupacao'), s?.tipo === 'hospede' ? api('/api/eu').catch(() => null) : null]);
@@ -128,7 +128,7 @@ P[''] = () => `
     </div>
   </section>
   <section class="sec chales wow"><div class="container row2">
-    <img src="${urlMidia(CMS.home.chalesFoto)}" alt="">
+    <img loading="lazy" decoding="async" src="${urlMidia(CMS.home.chalesFoto)}" alt="">
     <div><h3 class="addon-title">${esc(CMS.home.chalesTitulo)}</h3>
       ${paragrafos(CMS.home.chalesTexto)}
       <a class="sppb-btn sppb-btn-primary" href="#/acomodacoes">Saiba mais</a></div>
@@ -136,13 +136,13 @@ P[''] = () => `
   <section class="features wow"><div class="container">
     <h3 class="addon-title">${esc(CMS.home.destaquesTitulo)}</h3><p>${esc(CMS.home.destaquesTexto)}</p>
     <div class="row3">
-      ${CMS.home.destaques.map(d => `<div class="feature"><img src="${urlMidia(d.foto)}" alt=""><h3>${esc(d.titulo)}</h3><p>${esc(d.texto)}</p></div>`).join('')}
+      ${CMS.home.destaques.map(d => `<div class="feature"><img loading="lazy" decoding="async" src="${urlMidia(d.foto)}" alt=""><h3>${esc(d.titulo)}</h3><p>${esc(d.texto)}</p></div>`).join('')}
     </div></div></section>
   <section class="sec-piscina wow"><div class="container row2">
     <div><h3 class="addon-title">${esc(CMS.home.piscinaTitulo)}</h3>
       ${paragrafos(CMS.home.piscinaTexto)}<br>
       <a class="sppb-btn sppb-btn-default" href="#/fotos">Veja mais</a></div>
-    <img src="${urlMidia(CMS.home.piscinaFoto)}" alt="">
+    <img loading="lazy" decoding="async" src="${urlMidia(CMS.home.piscinaFoto)}" alt="">
   </div></section>`;
 
 // ---------- modelos de página do original ----------

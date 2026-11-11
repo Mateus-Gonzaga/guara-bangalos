@@ -5,7 +5,7 @@
 // ---------- conteúdo padrão (o que o site mostra antes de qualquer edição) ----------
 function unidadesPadrao() {
   // unidades fictícias de demonstração (edite em Gestão > Editar site > Chalés)
-  const G = n => n.split(' ').map(x => `img/guara/${x}.jpg`);
+  const G = n => n.split(' ').map(x => `img/guara/${x}.webp`);
   const base = ['Café da manhã servido no bangalô, sob encomenda.', 'Check-in a partir das 15h.', 'Check-out até as 12h.', 'Pagamento de 50% na reserva e 50% no check-in, por PIX ou transferência.'];
   const quarto = ['QUARTO', 'Cama queen com enxoval de algodão', 'Ventilador de teto', 'Cortinas blackout', 'Rede na varanda'];
   const cozinha = ['COZINHA', 'Cooktop de 2 bocas e frigobar', 'Cafeteira italiana e chaleira', 'Louças e talheres para 4 pessoas'];
@@ -29,26 +29,26 @@ function unidadesPadrao() {
   ];
 }
 const CMS_PADRAO = () => ({
-  marca: { nome: 'Guará Bangalôs', slogan: 'Ecolodge', logo: 'img/logo-guara.png', logoDestaque: 'img/logo-guara-pedra.jpg' },
+  marca: { nome: 'Guará Bangalôs', slogan: 'Ecolodge', logo: 'img/logo-guara.webp', logoDestaque: 'img/logo-guara-pedra.webp' },
   rodape: { pagamento: 'Trabalhamos com PIX ou transferências.' },
   contato: { telefone: '(61) 90000-0000', whatsapp: '5561900000000', instagram: 'guarabangalos', email: 'reservas@guarabangalos.test' },
   home: {
     titulo: 'Guará Bangalôs',
     subtitulo: 'Bangalôs no cerrado da Chapada dos Veadeiros, na região do Vale da Lua, em Alto Paraíso de Goiás.',
-    heroFoto: 'img/guara/por-do-sol-1-ia.jpg',
+    heroFoto: 'img/guara/por-do-sol-1-ia.webp',
     chalesTitulo: 'Conheça nossos bangalôs',
     chalesTexto: 'Quatro bangalôs e uma casa para grupos, espalhados pelo cerrado.\n\nCada bangalô tem quarto, banheiro, cozinha, deck e ofurô com água aquecida.',
-    chalesFoto: 'img/guara/por-do-sol-4.jpg',
+    chalesFoto: 'img/guara/por-do-sol-4.webp',
     destaquesTitulo: 'Guará Bangalôs',
     destaquesTexto: 'Um refúgio aconchegante e sustentável em meio à natureza da Chapada dos Veadeiros',
     destaques: [
-      { titulo: 'Pôr do sol', texto: 'Mirante no alto do terreno', foto: 'img/guara/por-do-sol-3.jpg' },
-      { titulo: 'Piscina natural', texto: 'Com pedras no fundo', foto: 'img/guara/f21.jpg' },
-      { titulo: 'Fauna do cerrado', texto: 'Araras, tucanos e, com sorte, o lobo-guará', foto: 'img/guara/f25.jpg' },
+      { titulo: 'Pôr do sol', texto: 'Mirante no alto do terreno', foto: 'img/guara/por-do-sol-3.webp' },
+      { titulo: 'Piscina natural', texto: 'Com pedras no fundo', foto: 'img/guara/f21.webp' },
+      { titulo: 'Fauna do cerrado', texto: 'Araras, tucanos e, com sorte, o lobo-guará', foto: 'img/guara/f25.webp' },
     ],
     piscinaTitulo: 'Piscina natural de água corrente',
     piscinaTexto: 'Nossa piscina não utiliza produtos químicos, não tem agressão ao meio ambiente e a sua pele.\n\nO visual rústico com pedras mantém o aspecto de cachoeira com muito conforto.',
-    piscinaFoto: 'img/guara/f04.jpg',
+    piscinaFoto: 'img/guara/f04.webp',
   },
   paginas: {
     sobre: 'A construção do Guará Bangalôs, na Chapada dos Veadeiros (GO), foi pautada na sustentabilidade e na valorização dos recursos locais. Os bangalôs integrados à natureza foram erguidos com materiais regionais, como terra e pedras, e tecnologias que reaproveitam água e energia solar.\n\nAs habitações são suspensas, evitando impermeabilizar o solo, e painéis solares fotovoltaicos alimentam os equipamentos internos e eletrodomésticos.',
@@ -76,7 +76,7 @@ const CMS_PADRAO = () => ({
     ['2027-03-26', '2027-03-27', 'Semana Santa'], ['2027-04-17', '2027-04-20', 'Tiradentes'],
   ],
   pix: { chave: 'pix-teste@guarabangalos.test', favorecido: 'GUARÁ BANGALÔS (TESTE)', banco: 'Banco de Teste 000', agencia: '0001', conta: '12345-6' },
-  galeria: ['img/guara/por-do-sol-1.jpg', 'img/guara/por-do-sol-2.jpg', 'img/guara/por-do-sol-3.jpg', 'img/guara/por-do-sol-4.jpg', 'img/guara/f01.jpg', 'img/guara/f02.jpg', 'img/guara/f04.jpg', 'img/guara/f07.jpg', 'img/guara/f09.jpg', 'img/guara/f10.jpg', 'img/guara/f11.jpg', 'img/guara/f12.jpg', 'img/guara/f13.jpg', 'img/guara/f14.jpg', 'img/guara/f15.jpg', 'img/guara/f16.jpg', 'img/guara/f17.jpg', 'img/guara/f18.jpg', 'img/guara/f19.jpg', 'img/guara/f20.jpg', 'img/guara/f21.jpg', 'img/guara/f23.jpg', 'img/guara/f25.jpg', 'img/guara/f26.jpg', 'img/guara/f27.jpg', 'img/guara/f28.jpg', 'img/guara/f30.jpg', 'img/guara/f08.jpg'],
+  galeria: ['img/guara/por-do-sol-1.webp', 'img/guara/por-do-sol-2.webp', 'img/guara/por-do-sol-3.webp', 'img/guara/por-do-sol-4.webp', 'img/guara/f01.webp', 'img/guara/f02.webp', 'img/guara/f04.webp', 'img/guara/f07.webp', 'img/guara/f09.webp', 'img/guara/f10.webp', 'img/guara/f11.webp', 'img/guara/f12.webp', 'img/guara/f13.webp', 'img/guara/f14.webp', 'img/guara/f15.webp', 'img/guara/f16.webp', 'img/guara/f17.webp', 'img/guara/f18.webp', 'img/guara/f19.webp', 'img/guara/f20.webp', 'img/guara/f21.webp', 'img/guara/f23.webp', 'img/guara/f25.webp', 'img/guara/f26.webp', 'img/guara/f27.webp', 'img/guara/f28.webp', 'img/guara/f30.webp', 'img/guara/f08.webp'],
   unidades: unidadesPadrao(),
 });
 

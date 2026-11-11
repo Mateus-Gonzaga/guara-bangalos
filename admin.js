@@ -20,7 +20,7 @@ P.gestao = q => {
   const titulo = ABAS.find(a => a[0] === aba)[2];
   return `<div class="adm">
     <aside class="adm-side">
-      <a class="adm-logo" href="#/gestao"><img src="img/logo-guara-pedra.jpg" alt="Guará Bangalôs" class="logo-pedra"><strong class="adm-marca">${esc(CMS.marca.nome)}</strong><span>Gestão</span></a>
+      <a class="adm-logo" href="#/gestao"><img src="img/logo-guara-pedra.webp" alt="Guará Bangalôs" class="logo-pedra"><strong class="adm-marca">${esc(CMS.marca.nome)}</strong><span>Gestão</span></a>
       <nav>${ABAS.map(([k, ic, t]) => `<a href="#/gestao?aba=${k}" class="${k === aba ? 'on' : ''}"><i class="fa ${ic}"></i> ${t}${k === 'reservas' && pend ? `<span class="badge">${pend}</span>` : ''}${k === 'mensagens' && novas ? `<span class="badge">${novas}</span>` : ''}</a>`).join('')}</nav>
       <div class="adm-side-pe"><a href="#/" target="_blank"><i class="fa fa-external-link-alt"></i> Ver site</a><a href="#" onclick="event.preventDefault();sair()"><i class="fa fa-sign-out-alt"></i> Sair</a></div>
     </aside>
@@ -171,6 +171,14 @@ ADM.seguranca = () => {
       <div><span>Pagamentos a conferir</span><b>${pend.length}</b><small>${pend.filter(r => r.status === 'comprovante').length} com comprovante</small></div>
       <div><span>Último acesso à Gestão</span><b style="font-size:20px">${ult ? new Date(ult.data).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</b><small>${ult ? 'IP ' + esc(ult.ip) : ''}</small></div>
     </section>
+    <section class="adm-box"><div class="pn-tit"><h2>Automações e avisos</h2></div>
+      <ul class="seg-lista">
+        <li><i class="fa fa-envelope"></i><div><b>E-mails</b><small>${db._d.config?.email ? 'Ativos (Resend)' : 'Desligados: falta a chave do Resend no servidor'}</small></div></li>
+        <li><i class="fab fa-whatsapp"></i><div><b>Aviso no WhatsApp da pousada</b><small>${db._d.config?.whatsapp ? 'Ativo (' + esc(db._d.config.whatsapp) + '): nova pré-reserva, comprovante, cancelamento e mensagem de contato' : 'Desligado: falta configurar o número e o serviço de envio no servidor'}</small></div></li>
+        <li><i class="far fa-bell"></i><div><b>Lembrete de check-in</b><small>E-mail ao hóspede ${db._d.config?.lembrete_dias ?? 3} dias antes da chegada, com endereço e rota (reservas confirmadas)</small></div></li>
+        <li><i class="fa fa-hourglass-half"></i><div><b>Cobrança do sinal</b><small>E-mail ao hóspede quando a pré-reserva passa 48 h sem pagamento</small></div></li>
+      </ul>
+      ${(db._d.whatsapp || []).length ? `<h3 style="margin-top:14px">Últimos avisos no WhatsApp</h3><table><tr><th>Quando</th><th>Mensagem</th><th>Situação</th></tr>${db._d.whatsapp.slice(0, 15).map(w => `<tr class="${w.status === 'enviado' ? '' : 'linha-alerta'}"><td>${new Date(w.data).toLocaleString('pt-BR')}</td><td><small>${esc(w.texto).replace(/\n/g, '<br>')}</small></td><td>${esc(w.status)}</td></tr>`).join('')}</table>` : ''}</section>
     <section class="adm-box"><div class="pn-tit"><h2>Registro de atividades</h2><span class="peq">Logins, tentativas recusadas, reservas, pagamentos, cancelamentos e edições do site. Guardado por 1 ano.</span></div>
       ${au.length ? `<table><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Detalhe</th><th>IP</th><th>Resultado</th></tr>
       ${au.map(a => `<tr class="${a.resultado !== 'ok' ? 'linha-alerta' : ''}"><td>${new Date(a.data).toLocaleString('pt-BR')}</td><td>${esc(a.quem === 'admin' ? 'Pousada' : (db.get('hospedes').find(h => h.id === a.quem) || {}).nome || a.quem)}</td><td>${esc(a.acao)}</td><td><small>${esc(a.detalhe)}</small></td><td><small>${esc(a.ip)}</small></td><td>${a.resultado === 'ok' ? 'ok' : `<b>${esc(a.resultado)}</b>`}</td></tr>`).join('')}</table>`
