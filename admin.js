@@ -1,5 +1,5 @@
 // Área da pousada: login e painel isolados do site (sem cabeçalho, menus e rodapé do site).
-// Rotas: #/gestao (o login é o mesmo dos hóspedes, em #/login)?aba=painel|reservas|calendario|hospedes|emails
+// Rotas: #/gestao (o login é o mesmo dos hóspedes, em #/login)?aba=painel|reservas|calendario|hospedes|mensagens|emails|seguranca
 
 const ehRotaAdmin = () => /^#\/gestao/.test(location.hash);
 // a tela de login também fica em tela cheia (só o cartão sobre a foto)
@@ -11,17 +11,17 @@ P.admin = () => { location.hash = ehAdmin() ? '#/gestao' : '#/login?volta=' + en
 // ---------- painel ----------
 const ABAS = [
   ['painel', 'fa-chart-line', 'Painel'], ['reservas', 'fa-calendar-check', 'Reservas'], ['calendario', 'fa-th', 'Ocupação'],
-  ['hospedes', 'fa-users', 'Hóspedes'], ['emails', 'fa-envelope', 'E-mails'],
+  ['hospedes', 'fa-users', 'Hóspedes'], ['mensagens', 'fa-comment-dots', 'Mensagens'], ['emails', 'fa-envelope', 'E-mails'], ['seguranca', 'fa-shield-alt', 'Segurança'],
 ];
 P.gestao = q => {
   if (!ehAdmin()) { location.hash = '#/login?volta=' + encodeURIComponent('#/gestao'); return ''; }
   const aba = ABAS.some(a => a[0] === q.aba) ? q.aba : 'painel';
-  const rs = db.get('reservas'), pend = rs.filter(r => r.status === 'comprovante').length;
+  const rs = db.get('reservas'), pend = rs.filter(r => r.status === 'comprovante').length, novas = db.get('contatos').filter(m => !m.lida).length;
   const titulo = ABAS.find(a => a[0] === aba)[2];
   return `<div class="adm">
     <aside class="adm-side">
       <a class="adm-logo" href="#/gestao"><img src="img/logo-guara-pedra.jpg" alt="Guará Bangalôs" class="logo-pedra"><strong class="adm-marca">${esc(CMS.marca.nome)}</strong><span>Gestão</span></a>
-      <nav>${ABAS.map(([k, ic, t]) => `<a href="#/gestao?aba=${k}" class="${k === aba ? 'on' : ''}"><i class="fa ${ic}"></i> ${t}${k === 'reservas' && pend ? `<span class="badge">${pend}</span>` : ''}</a>`).join('')}</nav>
+      <nav>${ABAS.map(([k, ic, t]) => `<a href="#/gestao?aba=${k}" class="${k === aba ? 'on' : ''}"><i class="fa ${ic}"></i> ${t}${k === 'reservas' && pend ? `<span class="badge">${pend}</span>` : ''}${k === 'mensagens' && novas ? `<span class="badge">${novas}</span>` : ''}</a>`).join('')}</nav>
       <div class="adm-side-pe"><a href="#/" target="_blank"><i class="fa fa-external-link-alt"></i> Ver site</a><a href="#" onclick="event.preventDefault();sair()"><i class="fa fa-sign-out-alt"></i> Sair</a></div>
     </aside>
     <main class="adm-main">
@@ -47,7 +47,7 @@ ADM.painel = (q, rs) => {
   const paradas = rs.filter(r => r.status === 'aguardando' && (Date.now() - new Date(r.criada)) / 864e5 >= 2);
   const atencao = [
     ...comprov.map(r => `<li><span class="at-ic azul"><i class="fa fa-paperclip"></i></span><div><b>${esc(r.nome)}</b> enviou o comprovante<small>${nome(r.unidade)}, ${dBR(r.entrada)} a ${dBR(r.saida)}, sinal ${fmt(r.sinal || r.total / 2)}</small></div>
-      <button class="btn btn-sm" onclick="confirmarPagamento('${r.id}')">Confirmar pagamento</button></li>`),
+      <span class="pn-bts"><button class="btn btn-sm btn-claro" onclick="verComprovante('${r.id}')">Ver comprovante</button><button class="btn btn-sm" onclick="confirmarPagamento('${r.id}')">Confirmar pagamento</button></span></li>`),
     ...paradas.map(r => `<li><span class="at-ic amarelo"><i class="fa fa-hourglass-half"></i></span><div><b>${esc(r.nome)}</b> ainda não pagou o sinal<small>Pré-reserva de ${new Date(r.criada).toLocaleDateString('pt-BR')}, ${nome(r.unidade)}, ${dBR(r.entrada)}</small></div>
       <a class="btn btn-sm btn-claro" target="_blank" href="https://wa.me/55${soDig(r.telefone)}">Chamar no WhatsApp</a></li>`),
   ];
@@ -109,9 +109,9 @@ ADM.reservas = (q, rs) => {
       <form onsubmit="event.preventDefault();location.hash='#/gestao?aba=reservas&status=${filtro}&busca='+encodeURIComponent(this.b.value)"><input name="b" placeholder="Buscar por código, nome, e-mail..." value="${esc(q.busca || '')}"></form>
     </div>
     <div class="adm-box">${lista.length ? `<table><tr><th>Código</th><th>Unidade</th><th>Período</th><th>Hóspede</th><th>Total</th><th>Situação</th><th></th></tr>
-    ${lista.map(r => `<tr><td>${r.id}<br><small>${new Date(r.criada).toLocaleDateString('pt-BR')}</small></td><td>${unidade(r.unidade).nome}</td><td>${dBR(r.entrada)} – ${dBR(r.saida)}<br><small>${noites(r.entrada, r.saida).length} noite(s) · chegada ${esc(r.chegada || '—')}</small></td>
+    ${lista.map(r => `<tr><td>${r.id}<br><small>${new Date(r.criada).toLocaleDateString('pt-BR')}</small></td><td>${esc((unidade(r.unidade) || { nome: r.unidade_nome }).nome)}</td><td>${dBR(r.entrada)} – ${dBR(r.saida)}<br><small>${noites(r.entrada, r.saida).length} noite(s) · chegada ${esc(r.chegada || '—')}</small></td>
       <td>${esc(r.nome)}<br><small>${esc(r.telefone)} · ${esc(r.email)}</small>${r.obs ? `<br><small><i>${esc(r.obs)}</i></small>` : ''}</td>
-      <td>${fmt(r.total)}<br><small>sinal ${fmt(r.sinal || r.total / 2)}</small></td><td>${selo(r.status)}${r.comprovante ? `<br><small>📎 ${esc(r.comprovante.nome)}</small>` : ''}</td>
+      <td>${fmt(r.total)}<br><small>sinal ${fmt(r.sinal || r.total / 2)}</small></td><td>${selo(r.status)}${r.comprovante ? `<br><button class="link-acao" onclick="verComprovante('${r.id}')"><i class="fa fa-paperclip"></i> ${esc(r.comprovante.nome)}</button>` : ''}</td>
       <td class="acoes">${['aguardando', 'comprovante'].includes(r.status) ? `<button class="btn btn-sm" onclick="confirmarPagamento('${r.id}')">Confirmar pagamento</button><br>` : ''}
       <a class="btn btn-sm btn-sec" target="_blank" href="https://wa.me/55${soDig(r.telefone)}">WhatsApp</a>
       ${r.status !== 'cancelada' ? `<button class="btn btn-sm btn-sec" onclick="cancelarGestao('${r.id}')">Cancelar</button>` : ''}</td></tr>`).join('')}</table>` : '<p class="peq">Nenhuma reserva encontrada.</p>'}</div>`;
@@ -137,12 +137,44 @@ ADM.hospedes = (q, rs) => {
       <td><a href="#/gestao?aba=reservas&busca=${encodeURIComponent(h.email)}">${rs.filter(r => r.hospede === h.id).length}</a></td></tr>`).join('')}</table>` : '<p class="peq">Nenhum hóspede cadastrado.</p>'}</div>`;
 };
 
+ADM.mensagens = q => {
+  const ms = db.get('contatos'), sel = ms.find(m => m.id === q.m) || ms[0];
+  if (sel && !sel.lida) { sel.lida = 1; api(`/api/admin/contatos/${sel.id}/lida`, { metodo: 'POST' }).catch(() => {}); }
+  return ms.length ? `<p class="peq">Mensagens do formulário de contato. Elas também chegam no e-mail da pousada; para responder, use o botão ou responda o e-mail.</p><div class="caixa adm-box">
+      <ul>${ms.map(m => `<li class="${m.id === sel.id ? 'on' : ''} ${m.lida ? '' : 'nao-lida'}" onclick="location.hash='#/gestao?aba=mensagens&m=${m.id}'"><b>${esc(m.nome)}</b> · ${esc(m.assunto)}<br><small>${new Date(m.data).toLocaleString('pt-BR')}</small></li>`).join('')}</ul>
+      <div class="msg"><p class="peq">${esc(sel.email)}${sel.telefone ? ' · ' + esc(sel.telefone) : ''}<br>${new Date(sel.data).toLocaleString('pt-BR')}${sel.datas ? '<br>Datas de interesse: ' + esc(sel.datas) : ''}</p>
+        <h3>${esc(sel.assunto)}</h3><p style="white-space:pre-wrap">${esc(sel.mensagem)}</p>
+        <p><a class="btn btn-sm" href="mailto:${esc(sel.email)}?subject=${encodeURIComponent('Re: ' + sel.assunto)}"><i class="far fa-envelope"></i> Responder por e-mail</a>
+        ${sel.telefone ? `<a class="btn btn-sm btn-claro" target="_blank" href="https://wa.me/55${soDig(sel.telefone)}"><i class="fab fa-whatsapp"></i> WhatsApp</a>` : ''}</p></div></div>`
+    : '<div class="adm-box"><p class="peq">Nenhuma mensagem pelo formulário de contato ainda.</p></div>';
+};
+
+const stEmail = st => /^enviado/.test(st) ? '<span class="status st-confirmada">Enviado</span>' : /^enviando/.test(st) ? '<span class="status st-comprovante">Enviando</span>' : `<span class="status st-cancelada" title="${esc(st)}">Falhou</span>`;
 ADM.emails = q => {
-  const ms = db.get('emails').slice().reverse(), sel = ms.find(m => m.id === q.m) || ms[0];
-  return ms.length ? `<p class="peq">E-mails que o site teria enviado. Neste site de demonstração nada sai de verdade.</p><div class="caixa adm-box">
-      <ul>${ms.map(m => `<li class="${m.id === sel.id ? 'on' : ''}" onclick="location.hash='#/gestao?aba=emails&m=${m.id}'"><b>${esc(m.assunto)}</b><br><small>${esc(m.para)} · ${new Date(m.data).toLocaleString('pt-BR')}</small></li>`).join('')}</ul>
-      <div class="msg"><p class="peq">Para: ${esc(sel.para)}<br>De: Guará Bangalôs &lt;${POUSADA_EMAIL}&gt;<br>${new Date(sel.data).toLocaleString('pt-BR')}</p><h3>${esc(sel.assunto)}</h3><div>${sel.corpo}</div></div></div>`
+  const ms = db.get('emails'), sel = ms.find(m => m.id === q.m) || ms[0];
+  return ms.length ? `<p class="peq">E-mails que o site enviou (para hóspedes e para a pousada).</p><div class="caixa adm-box">
+      <ul>${ms.map(m => `<li class="${m.id === sel.id ? 'on' : ''}" onclick="location.hash='#/gestao?aba=emails&m=${m.id}'"><b>${esc(m.assunto)}</b><br><small>${esc(m.para)} · ${new Date(m.data).toLocaleString('pt-BR')}</small> ${stEmail(m.status)}</li>`).join('')}</ul>
+      <div class="msg"><p class="peq">Para: ${esc(sel.para)}<br>${new Date(sel.data).toLocaleString('pt-BR')} · ${esc(sel.status)}</p><h3>${esc(sel.assunto)}</h3><div>${sel.corpo}</div></div></div>`
     : '<div class="adm-box"><p class="peq">Nenhum e-mail enviado ainda.</p></div>';
+};
+
+ADM.seguranca = () => {
+  const au = db.get('auditoria'), ems = db.get('emails');
+  const dia = Date.now() - 864e5, semana = Date.now() - 7 * 864e5;
+  const falhas = au.filter(a => a.resultado !== 'ok' && new Date(a.data) > semana);
+  const emFalha = ems.filter(m => !/^enviad/.test(m.status));
+  const pend = db.get('reservas').filter(r => ['aguardando', 'comprovante'].includes(r.status));
+  const ult = au.find(a => a.acao === 'login da Gestão');
+  return `<div class="pn"><section class="pn-hoje" aria-label="Resumo de segurança">
+      <div><span>Acessos recusados (7 dias)</span><b>${falhas.length}</b><small>${au.filter(a => a.resultado !== 'ok' && new Date(a.data) > dia).length} nas últimas 24 horas</small></div>
+      <div><span>E-mails com falha</span><b>${emFalha.length}</b><small>${emFalha.length ? 'veja a aba E-mails' : 'todos enviados'}</small></div>
+      <div><span>Pagamentos a conferir</span><b>${pend.length}</b><small>${pend.filter(r => r.status === 'comprovante').length} com comprovante</small></div>
+      <div><span>Último acesso à Gestão</span><b style="font-size:20px">${ult ? new Date(ult.data).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</b><small>${ult ? 'IP ' + esc(ult.ip) : ''}</small></div>
+    </section>
+    <section class="adm-box"><div class="pn-tit"><h2>Registro de atividades</h2><span class="peq">Logins, tentativas recusadas, reservas, pagamentos, cancelamentos e edições do site. Guardado por 1 ano.</span></div>
+      ${au.length ? `<table><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Detalhe</th><th>IP</th><th>Resultado</th></tr>
+      ${au.map(a => `<tr class="${a.resultado !== 'ok' ? 'linha-alerta' : ''}"><td>${new Date(a.data).toLocaleString('pt-BR')}</td><td>${esc(a.quem === 'admin' ? 'Pousada' : (db.get('hospedes').find(h => h.id === a.quem) || {}).nome || a.quem)}</td><td>${esc(a.acao)}</td><td><small>${esc(a.detalhe)}</small></td><td><small>${esc(a.ip)}</small></td><td>${a.resultado === 'ok' ? 'ok' : `<b>${esc(a.resultado)}</b>`}</td></tr>`).join('')}</table>`
+        : '<p class="peq">Nada registrado ainda.</p>'}</section></div>`;
 };
 
 // ---------- liga/desliga o "modo admin" (esconde o site) ----------
@@ -155,4 +187,4 @@ window.atualizarMenu = atualizarMenu = function () {
   // no site, a pousada logada vê "Gestão" no menu; hóspede/visitante seguem como antes
 };
 // primeira renderização: espera as fotos enviadas carregarem
-addEventListener('DOMContentLoaded', () => cmsPronto.then(() => { montarUnidades(); render(); }));
+addEventListener('DOMContentLoaded', () => dadosProntos.then(() => { montarUnidades(); render(); }));

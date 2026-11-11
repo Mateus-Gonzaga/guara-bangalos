@@ -63,10 +63,10 @@ function lerCampos(f, raiz = CMS) {
     pôr(el.dataset.k, v, raiz);
   }
 }
-window.salvarSecao = f => {
+window.salvarSecao = async f => {
   lerCampos(f);
   if (f.dataset.extra) EXTRA[f.dataset.extra](f);
-  if (!salvarCMS()) return;
+  if (!await salvarCMS()) return;
   montarUnidades(); f.classList.remove('alterado');
   toast('Alterações salvas. O site já mostra a nova versão.');
   render(); recarregarPrevia();
@@ -108,16 +108,16 @@ ED.chales = () => {
     <button type="button" class="btn btn-sm btn-sec ed-excluir" onclick="excluirUnidade(${i})" ${ativas.some(r => r.unidade === +u.id) ? 'disabled title="Tem reservas ativas"' : ''}><i class="fa fa-trash"></i> Excluir esta unidade</button>
   </details>`).join('') + `<button type="button" class="btn btn-claro ed-nova" onclick="novaUnidade()"><i class="fa fa-plus"></i> Adicionar unidade</button>`, '', '#/acomodacoes');
 };
-window.novaUnidade = () => {
+window.novaUnidade = async () => {
   const id = Math.max(0, ...CMS.unidades.map(u => +u.id)) + 1;
   CMS.unidades.push({ id, nome: `Chalé ${id}`, categoria: 'Standard', capacidade: 3, inclusos: 2, ajuste: 100, amen: ['Wifi'], resto: ['Check-in a partir das 15h.', 'Check-out até às 12h.'], fotos: [] });
-  salvarCMS(); montarUnidades(); render();
+  await salvarCMS(); montarUnidades(); render();
   setTimeout(() => { const d = [...document.querySelectorAll('.ed-unidade')].pop(); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }, 50);
 };
-window.excluirUnidade = i => {
+window.excluirUnidade = async i => {
   const u = CMS.unidades[i];
   if (!confirm(`Excluir "${u.nome}" do site? As reservas antigas dela continuam no histórico.`)) return;
-  CMS.unidades.splice(i, 1); salvarCMS(); montarUnidades(); toast('Unidade excluída.'); render();
+  CMS.unidades.splice(i, 1); await salvarCMS(); montarUnidades(); toast('Unidade excluída.'); render();
 };
 
 const DIAS_SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -149,11 +149,9 @@ ED.marca = () => formulario('marca',
   bloco('Certificado', foto('paginas.certificadoFoto', 'Imagem do certificado Cadastur'), 'Página "Nosso Parceiros", no link do rodapé.'), '', '#/');
 
 ED.backup = () => `<div class="ed-bloco"><h3>Backup do conteúdo</h3>
-  <p class="peq">As edições ficam salvas só neste navegador. Baixe um backup para guardar ou levar para outro computador.</p>
+  <p class="peq">As edições ficam salvas no servidor e valem para todos os visitantes. Baixe um backup do conteúdo para guardar uma cópia.</p>
   <p><button class="btn" onclick="baixarBackup(this)"><i class="fa fa-download"></i> Baixar backup</button>
   <label class="btn btn-claro"><i class="fa fa-upload"></i> Restaurar de um backup<input type="file" accept="application/json" hidden onchange="restaurarBackup(this)"></label></p>
-  <hr><h3>Dados de demonstração</h3><p class="peq">Recria hóspedes, reservas e e-mails fictícios com datas a partir de hoje. Seus dados reais não são apagados.</p>
-  <button class="btn btn-claro" onclick="semearDemo(true);toast('Dados de demonstração recriados.');render()"><i class="fa fa-magic"></i> Recriar dados de demonstração</button>
   <hr><h3>Voltar ao conteúdo original</h3><p class="peq">Desfaz todas as edições de textos, preços, unidades e fotos. Reservas e cadastros não são afetados.</p>
   <button class="btn btn-sec" onclick="restaurarPadrao()"><i class="fa fa-undo"></i> Restaurar conteúdo original</button></div>`;
 window.baixarBackup = async b => {
@@ -175,12 +173,12 @@ window.restaurarBackup = async input => {
       await new Promise(ok => { const t = bd.transaction('midias', 'readwrite'); t.objectStore('midias').put(blob, id); t.oncomplete = ok; });
       MID.set(id, URL.createObjectURL(blob));
     }
-    CMS = mesclar(CMS_PADRAO(), d.conteudo); salvarCMS(); montarUnidades(); toast('Backup restaurado.'); render();
+    CMS = mesclar(CMS_PADRAO(), d.conteudo); await salvarCMS(); montarUnidades(); toast('Backup restaurado.'); render();
   } catch (e) { alert('Não foi possível restaurar: ' + e.message); }
 };
-window.restaurarPadrao = () => {
+window.restaurarPadrao = async () => {
   if (!confirm('Desfazer todas as edições do site e voltar ao conteúdo original?')) return;
-  localStorage.removeItem('tg_cms'); CMS = CMS_PADRAO(); montarUnidades(); toast('Conteúdo original restaurado.'); render();
+  CMS = CMS_PADRAO(); await salvarCMS(); montarUnidades(); toast('Conteúdo original restaurado.'); render();
 };
 
 // ---------- prévia ao vivo ----------

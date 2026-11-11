@@ -1,5 +1,5 @@
-// Conteúdo editável do site (textos, fotos, preços, unidades, contato).
-// Fica salvo no navegador: textos em localStorage ('tg_cms') e fotos enviadas em IndexedDB.
+// Conteúdo editável do site (textos, fotos, preços, unidades, contato) e acesso ao servidor (api()).
+// O conteúdo editado e as fotos enviadas ficam no servidor; o padrão abaixo vale para o que nunca foi editado.
 // Carregado antes do app.js. A Gestão > "Editar site" altera este objeto.
 
 // ---------- conteúdo padrão (o que o site mostra antes de qualquer edição) ----------
@@ -87,10 +87,35 @@ function mesclar(base, salvo) {
   for (const k in salvo || {}) r[k] = k in base ? mesclar(base[k], salvo[k]) : salvo[k];
   return r;
 }
-let CMS = mesclar(CMS_PADRAO(), JSON.parse(localStorage.getItem('tg_cms') || '{}'));
-function salvarCMS() {
-  try { localStorage.setItem('tg_cms', JSON.stringify(CMS)); return true; }
-  catch (e) { alert('Não foi possível salvar: o espaço do navegador acabou.'); return false; }
+// ---------- conversa com o servidor (api/api.py) ----------
+// No GitHub Pages o site usa a API do domínio próprio.
+const API_BASE = /github\.io$/.test(location.hostname) ? 'https://guarabangalos.com.br' : '';
+const tokenSessao = () => (JSON.parse(sessionStorage.getItem('tg_sessao') || localStorage.getItem('tg_sessao') || 'null') || {}).token;
+async function api(caminho, { metodo = 'GET', dados, arquivo, cabecalhos = {} } = {}) {
+  const h = { ...cabecalhos }, t = tokenSessao();
+  if (t) h.Authorization = 'Bearer ' + t;
+  let corpo;
+  if (arquivo) { corpo = arquivo; h['Content-Type'] = arquivo.type || 'application/octet-stream'; }
+  else if (dados !== undefined) { corpo = JSON.stringify(dados); h['Content-Type'] = 'application/json'; }
+  let r;
+  try { r = await fetch(API_BASE + caminho, { method: metodo, headers: h, body: corpo }); }
+  catch (e) { throw Object.assign(new Error('Sem conexão com o servidor. Verifique a internet e tente de novo.'), { status: 0 }); }
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && t) { sessionStorage.removeItem('tg_sessao'); localStorage.removeItem('tg_sessao'); }
+  if (!r.ok) throw Object.assign(new Error(j.erro || 'Erro no servidor.'), { status: r.status, campo: j.campo });
+  return j;
+}
+
+let CMS = CMS_PADRAO();
+async function carregarCMS() {
+  let salvo = {};
+  try { salvo = await api('/api/cms'); } catch (e) { /* sem servidor: conteúdo padrão */ }
+  CMS = mesclar(CMS_PADRAO(), salvo);
+}
+// grava o conteúdo no servidor (só a pousada logada consegue)
+async function salvarCMS() {
+  try { await api('/api/cms', { metodo: 'PUT', dados: CMS }); return true; }
+  catch (e) { alert('Não foi possível salvar: ' + e.message); return false; }
 }
 
 // ---------- fotos enviadas: IndexedDB ----------
@@ -102,12 +127,10 @@ function abrirBanco() {
     r.onsuccess = () => ok(r.result); r.onerror = () => erro(r.error);
   });
 }
+// envia a foto (ou vídeo) para o servidor e devolve o endereço dela
 async function guardarMidia(blob) {
-  const id = 'mid:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  const bd = await abrirBanco();
-  await new Promise((ok, erro) => { const t = bd.transaction('midias', 'readwrite'); t.objectStore('midias').put(blob, id); t.oncomplete = ok; t.onerror = () => erro(t.error); });
-  MID.set(id, URL.createObjectURL(blob));
-  return id;
+  const arq = blob.type ? blob : new Blob([blob], { type: 'image/jpeg' });
+  return API_BASE + (await api('/api/midia', { metodo: 'POST', arquivo: arq })).url;
 }
 async function carregarMidias() {
   try {
@@ -121,7 +144,8 @@ async function carregarMidias() {
 }
 // endereço de uma foto: arquivo do projeto ou foto enviada pela Gestão
 const urlMidia = ref => (ref && ref.startsWith('mid:') ? MID.get(ref) || '' : ref || '');
-const cmsPronto = carregarMidias();
+// fotos antigas guardadas no navegador (IndexedDB) + conteúdo salvo no servidor
+const cmsPronto = Promise.all([carregarMidias(), carregarCMS()]);
 
 // reduz a foto antes de guardar (máx. 1920px, JPEG) para caber no navegador
 function reduzirFoto(arquivo, max = 1920) {

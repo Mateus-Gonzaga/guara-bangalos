@@ -1,16 +1,32 @@
-// Site de demonstração do Guará Bangalôs. Tudo roda no navegador; os dados ficam no localStorage.
+// Site do Guará Bangalôs. Reservas, contas e mensagens ficam no servidor (api/api.py); o navegador guarda uma cópia em memória.
 const $ = (s, el = document) => el.querySelector(s);
 const app = $('#app');
 const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dBR = iso => iso.split('-').reverse().join('/');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// ---------- armazenamento ----------
-const db = {
-  get: k => JSON.parse(localStorage.getItem('tg_' + k) || '[]'),
-  set: (k, v) => localStorage.setItem('tg_' + k, JSON.stringify(v)),
-  add(k, item) { const l = this.get(k); l.push(item); this.set(k, l); return item; },
-};
+// ---------- dados do servidor (cópia em memória) ----------
+// reservas: datas ocupadas (sem dados pessoais) + as reservas completas de quem está logado
+// hospede: o hóspede logado · hospedes, emails, contatos: só para a Gestão
+const db = { _d: {}, get: k => db._d[k] || [], set: (k, v) => { db._d[k] = v; } };
+async function carregarDados() {
+  const s = JSON.parse(sessionStorage.getItem('tg_sessao') || localStorage.getItem('tg_sessao') || 'null');
+  try {
+    if (s?.tipo === 'admin') {
+      const d = await api('/api/admin/dados');
+      db._d = { reservas: d.reservas, hospedes: d.hospedes, emails: d.emails, contatos: d.contatos, auditoria: d.auditoria };
+      return;
+    }
+    const [ocup, eu] = await Promise.all([api('/api/ocupacao'), s?.tipo === 'hospede' ? api('/api/eu').catch(() => null) : null]);
+    db._d = { reservas: [...ocup.map(r => ({ ...r, status: 'ocupada' })), ...(eu ? eu.reservas : [])], hospede: eu ? eu.hospede : null };
+  } catch (e) {
+    console.warn('Sem dados do servidor:', e.message);
+    if (e.status === 401) return carregarDados();
+  }
+}
+const dadosProntos = cmsPronto.then(carregarDados);
+// recarrega e redesenha (depois de uma ação ou ao navegar logado)
+async function atualizar() { await carregarDados(); render(); }
 
 // ---------- unidades ----------
 let UN = [];
@@ -294,6 +310,7 @@ P.contato = () => {
       <div class="ct-2"><label>Assunto<select name="assunto"><option>Dúvida sobre hospedagem</option><option>Orçamento para grupo</option><option>Reserva já feita</option><option>Outro assunto</option></select></label>
         <label><span>Datas de interesse <small>(opcional)</small></span><input name="datas" placeholder="Ex.: 20 a 23 de dezembro"></label></div>
       <label>Mensagem<textarea name="mensagem" rows="5" required></textarea></label>
+      <input name="site" tabindex="-1" autocomplete="off" aria-hidden="true" class="pote">
       <button class="btn">Enviar mensagem</button><div id="ret-contato" role="status"></div>
     </form>
     <aside class="ct-canais">
@@ -308,13 +325,15 @@ P.contato = () => {
     </aside>
   </div></section>`;
 };
-window.enviarContato = f => {
+window.enviarContato = async f => {
   const d = Object.fromEntries(new FormData(f)), out = $('#ret-contato');
   f.querySelectorAll('.invalido').forEach(l => l.classList.remove('invalido'));
   const falta = ['nome', 'email', 'mensagem'].filter(k => !String(d[k] || '').trim() || (k === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)));
   if (falta.length) { falta.forEach(k => f.elements[k].closest('label').classList.add('invalido')); f.elements[falta[0]].focus(); out.innerHTML = '<p class="aviso erro">Preencha nome, um e-mail válido e a mensagem.</p>'; return; }
-  enviarEmail(POUSADA_EMAIL, `[Site] ${d.assunto} — ${d.nome}`, `<p><b>${esc(d.nome)}</b> (${esc(d.email)}${d.telefone ? ', ' + esc(d.telefone) : ''}) escreveu:</p>${d.datas ? `<p>Datas de interesse: ${esc(d.datas)}</p>` : ''}<p>${esc(d.mensagem).replace(/\n/g, '<br>')}</p>`);
-  f.reset(); out.innerHTML = '<p class="aviso">Mensagem enviada. Respondemos em até um dia útil.</p>';
+  const b = f.querySelector('button'); b.disabled = true;
+  try { await api('/api/contato', { metodo: 'POST', dados: d }); f.reset(); out.innerHTML = '<p class="aviso">Mensagem enviada. Respondemos em até um dia útil.</p>'; }
+  catch (e) { out.innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
+  b.disabled = false;
 };
 
 P.politica = () => artigo('Política de cancelamento', 0, null, paragrafos(CMS.paginas.politica) + `
@@ -386,4 +405,6 @@ $('#offcanvas .oc-menu').innerHTML = $('#menu').innerHTML.replace('id="link-logi
 $('#offcanvas').addEventListener('click', e => { if (e.target.tagName === 'A') document.body.classList.remove('menu-aberto'); });
 addEventListener('keydown', e => { if (e.key === 'Escape') document.body.classList.remove('menu-aberto'); });
 addEventListener('hashchange', render);
+// logado, os dados podem ter mudado no servidor: busca de novo ao trocar de página
+addEventListener('hashchange', () => { if (sessao()) carregarDados().then(render); });
 // a primeira renderização acontece no fim de conta.js

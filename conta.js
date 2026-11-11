@@ -1,5 +1,5 @@
-// Reserva completa, conta de hóspede, gestão e e-mails — site de demonstração.
-// Tudo fica no navegador (localStorage). Os e-mails são simulados: vão para a caixa de saída da Gestão.
+// Reserva completa, conta de hóspede e ações da Gestão.
+// Tudo é gravado no servidor (api/api.py), que também envia os e-mails.
 
 // ---------- sessão (hóspede ou pousada) ----------
 const sessao = () => JSON.parse(sessionStorage.getItem('tg_sessao') || localStorage.getItem('tg_sessao') || 'null');
@@ -7,16 +7,32 @@ function entrarComo(s, lembrar) {
   sessionStorage.setItem('tg_sessao', JSON.stringify(s));
   if (lembrar) localStorage.setItem('tg_sessao', JSON.stringify(s));
 }
-function sair() { const adm = ehAdmin(); sessionStorage.removeItem('tg_sessao'); localStorage.removeItem('tg_sessao'); location.hash = adm ? '#/login' : '#/'; render(); }
+async function sair() {
+  const adm = ehAdmin();
+  try { await api('/api/sair', { metodo: 'POST' }); } catch (e) { /* já saiu */ }
+  sessionStorage.removeItem('tg_sessao'); localStorage.removeItem('tg_sessao');
+  await carregarDados(); location.hash = adm ? '#/login' : '#/'; render();
+}
 window.sair = sair;
 const ehAdmin = () => sessao()?.tipo === 'admin';
-const hospedeAtual = () => { const s = sessao(); return s?.tipo === 'hospede' ? db.get('hospedes').find(h => h.id === s.id) : null; };
-const ADMIN = { usuario: 'admin', senha: 'guara123' }; // credencial só de teste
-
-async function hash(txt) {
-  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('tg:' + txt));
-  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+const hospedeAtual = () => sessao()?.tipo === 'hospede' ? db._d.hospede || null : null;
+// depois de entrar/sair/agir: busca os dados de novo e vai para a página
+async function irPara(destinoHash) {
+  await carregarDados();
+  if (location.hash === destinoHash) render(); else location.hash = destinoHash;
 }
+// mostra o erro do servidor no campo certo (quando ele diz qual é) ou numa caixa
+function erroServidor(f, e, caixa) {
+  if (e.campo && f?.elements?.[e.campo]) return erroCampo(f, e.campo, e.message);
+  const out = caixa ? $(caixa) : null;
+  if (out) out.innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; else alert(e.message);
+}
+// trava o botão enquanto espera o servidor
+async function ocupado_(f, fn) {
+  const b = f?.querySelector('button:not([type=button])'); if (b) { if (b.disabled) return; b.disabled = true; b.classList.add('carregando'); }
+  try { return await fn(); } finally { if (b) { b.disabled = false; b.classList.remove('carregando'); } }
+}
+
 const soDig = s => String(s).replace(/\D/g, '');
 function cpfValido(c) {
   c = soDig(c); if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false;
@@ -29,12 +45,6 @@ function cpfValido(c) {
 const fmtCPF = c => soDig(c).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 const uid = p => p + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
 
-// ---------- e-mails simulados ----------
-const POUSADA_EMAIL = 'reservas@guarabangalos.test';
-function enviarEmail(para, assunto, corpo) {
-  db.add('emails', { id: uid('M'), data: new Date().toISOString(), para, assunto, corpo });
-  toast(`E-mail enviado (simulado) para ${para}`);
-}
 function toast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.classList.add('on'), 10);
@@ -42,7 +52,7 @@ function toast(msg) {
 }
 const STATUS = { aguardando: 'Aguardando pagamento', comprovante: 'Comprovante enviado', confirmada: 'Confirmada', cancelada: 'Cancelada' };
 const selo = s => `<span class="status st-${s}">${STATUS[s] || s}</span>`;
-const linhaReserva = r => { const u = unidade(r.unidade); return `${u.nome} · ${dBR(r.entrada)} a ${dBR(r.saida)} · ${r.adultos} adulto(s)${r.criancas ? `, ${r.criancas} criança(s)` : ''} · total ${fmt(r.total)}`; };
+const linhaReserva = r => { const u = unidade(r.unidade) || { nome: r.unidade_nome || 'Unidade' }; return `${u.nome} · ${dBR(r.entrada)} a ${dBR(r.saida)} · ${r.adultos} adulto(s)${r.criancas ? `, ${r.criancas} criança(s)` : ''} · total ${fmt(r.total)}`; };
 
 // ---------- regras do original ----------
 // "Mínimo de duas diárias. Em feriados prolongados somente serão aceitas reservas para todo o período."
@@ -230,26 +240,20 @@ P.reservar = q => {
   </div></div></section>`;
 };
 
-window.confirmarReserva = f => {
+window.confirmarReserva = f => ocupado_(f, async () => {
   const q = Object.fromEntries(new URLSearchParams(location.hash.split('?')[1]));
   const u = unidade(q.unidade), h = hospedeAtual();
   if (!h) return;
-  if (ocupado(u.id, q.entrada, q.saida)) return alert('Essas datas acabaram de ficar indisponíveis.');
   const o = orcamento(u, q.entrada, q.saida, q.adultos, q.criancas);
   const d = Object.fromEntries(new FormData(f));
-  const r = db.add('reservas', {
-    id: uid('TG'), criada: new Date().toISOString(), status: 'aguardando', hospede: h.id,
-    unidade: u.id, entrada: q.entrada, saida: q.saida, adultos: +q.adultos, criancas: +q.criancas, bebe: +(q.bebe || 0),
-    total: o.total, sinal: o.sinal, nome: d.nome, email: h.email, telefone: d.celular, cpf: h.cpf,
-    chegada: d.chegada, pagamento: d.pagamento, obs: d.obs,
-  });
-  enviarEmail(h.email, `[Guará Bangalôs] Pré-reserva ${r.id} recebida`,
-    `<p>Olá, ${esc(h.nome)}!</p><p>Recebemos sua pré-reserva:</p><p><b>${linhaReserva(r)}</b></p>
-     <p>Para garantir as datas, faça o pagamento do sinal de <b>${fmt(r.sinal)}</b> via PIX (chave ${PIX_TESTE.chave}) e envie o comprovante em "Minhas reservas".</p>
-     <p>O restante (${fmt(r.total - r.sinal)}) é pago no check-in. Check-in a partir das 15h, check-out até às 12h.</p>`);
-  enviarEmail(POUSADA_EMAIL, `[Site] Nova pré-reserva ${r.id}`, `<p>Nova pré-reserva de <b>${esc(h.nome)}</b> (${esc(h.email)}, ${esc(d.celular)}):</p><p>${linhaReserva(r)}</p><p>Observações: ${esc(d.obs || '—')}</p>`);
-  location.hash = '#/confirmacao/' + r.id;
-};
+  try {
+    const r = await api('/api/reservas', { metodo: 'POST', dados: {
+      unidade: u.id, entrada: q.entrada, saida: q.saida, adultos: +q.adultos, criancas: +q.criancas, bebe: +(q.bebe || 0),
+      total: o.total, sinal: o.sinal, nome: d.nome, celular: d.celular, chegada: d.chegada, pagamento: d.pagamento, obs: d.obs } });
+    toast('Pré-reserva feita! Enviamos os detalhes para o seu e-mail.');
+    await irPara('#/confirmacao/' + r.id);
+  } catch (e) { alert(e.message); if (e.status === 409) atualizar(); }
+});
 
 P.confirmacao = id => {
   const r = db.get('reservas').find(x => x.id === id);
@@ -292,14 +296,15 @@ function qrFake(seed) {
   }
   return `<svg viewBox="-1 -1 23 23" width="150" height="150"><rect x="-1" y="-1" width="23" height="23" fill="#fff"/><g fill="#000">${cel}</g></svg>`;
 }
-window.enviarComprovante = (id, f) => {
+window.enviarComprovante = (id, f) => ocupado_(f, async () => {
   const arq = f.arq.files[0]; if (!arq) return;
-  const l = db.get('reservas'), r = l.find(x => x.id === id);
-  r.comprovante = { nome: arq.name, tamanho: arq.size, data: new Date().toISOString() };
-  r.status = 'comprovante'; db.set('reservas', l);
-  enviarEmail(POUSADA_EMAIL, `[Site] Comprovante da reserva ${r.id}`, `<p>${esc(r.nome)} enviou o comprovante <b>${esc(arq.name)}</b> da reserva:</p><p>${linhaReserva(r)}</p><p>Confira o pagamento e confirme a reserva na Gestão.</p>`);
-  render();
-};
+  if (arq.size > 6 * 1024 * 1024) return alert('Arquivo muito grande (máximo 6 MB).');
+  try {
+    await api(`/api/reservas/${id}/comprovante`, { metodo: 'POST', arquivo: arq, cabecalhos: { 'X-Arquivo': encodeURIComponent(arq.name) } });
+    toast('Comprovante enviado. Vamos conferir e confirmar sua reserva.');
+    await atualizar();
+  } catch (e) { alert(e.message); }
+});
 
 // ---------- cadastro, login e recuperação de senha ----------
 // Layout igual ao original (Joomla + motor de reservas), com melhorias marcadas como "melhoria".
@@ -360,38 +365,23 @@ P.login = q => {
     <button class="btn btn-block">Entrar</button><div id="ret-login"></div>
     <a class="btn-codigo" href="#/login?view=codigo${v}"><i class="far fa-envelope"></i> Entrar com código por e-mail</a>
     <div class="login-links"><a href="#/login?view=reset">Esqueceu sua senha?</a><a href="#/cadastro${q.volta ? '?volta=' + encodeURIComponent(q.volta) : ''}">Criar conta de hóspede</a></div>
-    <p class="dica">Demonstração — pousada: <b>admin</b> / <b>guara123</b>. Hóspede: <b>maria@teste.test</b> / <b>demo1234</b>.</p>
     <a class="voltar-site" href="#/">← Voltar ao site</a>
   </form></section>`;
 };
 
-// bloqueio depois de 5 tentativas erradas por 5 minutos (melhoria)
-const TENT = 5, ESPERA = 5 * 60e3;
-const bloqueio = () => JSON.parse(localStorage.getItem('tg_bloqueio') || '{"n":0,"ate":0}');
-window.entrar = async (f, volta) => {
+// o servidor bloqueia depois de 5 tentativas erradas por 5 minutos
+window.entrar = (f, volta) => ocupado_(f, async () => {
   const { usuario = '', senha = '', lembrar } = Object.fromEntries(new FormData(f));
   const out = f.querySelector('#ret-login') || $('#ret-login');
-  limparErros(f);
+  limparErros(f); out.innerHTML = '';
   if (!usuario.trim()) return erroCampo(f, 'usuario', 'Informe seu e-mail ou CPF.');
   if (!senha) return erroCampo(f, 'senha', 'Informe sua senha.');
-  const b = bloqueio();
-  if (b.ate > Date.now()) return out.innerHTML = `<p class="aviso erro">Muitas tentativas. Tente de novo em ${Math.ceil((b.ate - Date.now()) / 60e3)} minuto(s) ou entre com código por e-mail.</p>`;
-  const falhou = () => {
-    const n = b.n + 1;
-    localStorage.setItem('tg_bloqueio', JSON.stringify(n >= TENT ? { n: 0, ate: Date.now() + ESPERA } : { n, ate: 0 }));
-    out.innerHTML = `<p class="aviso erro">Usuário ou senha inválidos.${n >= TENT ? ' Acesso bloqueado por 5 minutos.' : n >= 3 ? ` Restam ${TENT - n} tentativa(s).` : ''}</p>`;
-  };
-  if (usuario.trim().toLowerCase() === ADMIN.usuario) {
-    if (senha !== ADMIN.senha) return falhou();
-    localStorage.removeItem('tg_bloqueio'); entrarComo({ tipo: 'admin' }, lembrar);
-    location.hash = destino(volta, '#/gestao'); render(); return;
-  }
-  const h = acharHospede(usuario);
-  if (!h || h.senha !== await hash(senha)) return falhou();
-  localStorage.removeItem('tg_bloqueio'); entrarComo({ tipo: 'hospede', id: h.id }, lembrar);
-  location.hash = destino(volta, '#/minhas-reservas'); render();
-};
-const acharHospede = u => { u = u.trim().toLowerCase(); const d = soDig(u); return db.get('hospedes').find(x => x.email.toLowerCase() === u || (d.length === 11 && x.cpf === d)); };
+  try {
+    const r = await api('/api/login', { metodo: 'POST', dados: { usuario, senha, lembrar: !!lembrar } });
+    entrarComo({ tipo: r.tipo, token: r.token }, lembrar);
+    await irPara(destino(volta, r.tipo === 'admin' ? '#/gestao' : '#/minhas-reservas'));
+  } catch (e) { out.innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
+});
 
 // ----- Entrar com código por e-mail, sem senha (melhoria) -----
 P.loginCodigo = q => `<section class="login-unico"><div class="adm-card login-passo"><img src="${urlMidia(CMS.marca.logoDestaque)}" alt="" class="logo-pedra"><strong class="adm-marca">Guará Bangalôs</strong><h1>Entrar com código</h1>
@@ -403,24 +393,21 @@ P.loginCodigo = q => `<section class="login-unico"><div class="adm-card login-pa
     <label>Código <span class="star">*</span><input name="codigo" inputmode="numeric" maxlength="6" required autocomplete="one-time-code" class="codigo"></label>
     <button class="btn">Entrar</button></form>`}
   <div id="ret-rec"></div><a class="voltar-site" href="#/login">← Entrar com senha</a></div></section>`;
-window.pedirCodigoLogin = (f, volta) => {
+window.pedirCodigoLogin = (f, volta) => ocupado_(f, async () => {
   const email = f.email.value.trim().toLowerCase();
-  const l = db.get('hospedes'), h = l.find(x => x.email.toLowerCase() === email);
-  if (h) {
-    h.codLogin = { codigo: String(Math.floor(100000 + Math.random() * 900000)), ate: Date.now() + 10 * 60e3 }; db.set('hospedes', l);
-    enviarEmail(h.email, '[Guará Bangalôs] Seu código de acesso', `<p>Use o código <b style="font-size:20px;letter-spacing:3px">${h.codLogin.codigo}</b> para entrar no site da Guará Bangalôs. Ele vale por 10 minutos.</p><p>Se não foi você, ignore este e-mail.</p>`);
-  }
-  // não revela se o e-mail existe
+  try { await api('/api/codigo-login', { metodo: 'POST', dados: { email } }); }
+  catch (e) { return $('#ret-rec').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
+  // a resposta é a mesma exista ou não a conta (não revela quem é cliente)
   location.hash = '#/login?' + new URLSearchParams({ view: 'codigo', email, ...(volta ? { volta: decodeURIComponent(volta) } : {}) });
-};
-window.entrarComCodigo = (f, volta) => {
+});
+window.entrarComCodigo = (f, volta) => ocupado_(f, async () => {
   const d = Object.fromEntries(new FormData(f));
-  const l = db.get('hospedes'), h = l.find(x => x.email.toLowerCase() === d.email);
-  if (!h || !h.codLogin || h.codLogin.codigo !== d.codigo.trim() || Date.now() > h.codLogin.ate) return $('#ret-rec').innerHTML = '<p class="aviso erro">Código inválido ou expirado.</p>';
-  delete h.codLogin; db.set('hospedes', l); localStorage.removeItem('tg_bloqueio');
-  entrarComo({ tipo: 'hospede', id: h.id });
-  location.hash = destino(volta, '#/minhas-reservas'); render();
-};
+  try {
+    const r = await api('/api/entrar-codigo', { metodo: 'POST', dados: { email: d.email, codigo: d.codigo } });
+    entrarComo({ tipo: r.tipo, token: r.token });
+    await irPara(destino(volta, '#/minhas-reservas'));
+  } catch (e) { $('#ret-rec').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
+});
 
 // ----- Cadastro (igual ao original: "Crie sua conta", campos na largura toda, Enviar) -----
 const ESTADOS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
@@ -440,25 +427,24 @@ P.cadastro = q => `<section class="page-body"><div class="container"><div class=
   </form>
   <p class="ja-tenho">Já tem cadastro? <a href="#/login${q.volta ? '?volta=' + encodeURIComponent(q.volta) : ''}">Entrar</a></p>
 </div></div></section>`;
-window.cadastrar = async (f, volta) => {
+window.cadastrar = (f, volta) => ocupado_(f, async () => {
   const d = Object.fromEntries(new FormData(f));
-  limparErros(f);
-  const hs = db.get('hospedes'); let ok = true;
+  limparErros(f); let ok = true;
   const erro = (c, m) => { erroCampo(f, c, m); ok = false; };
   if (d.nome.trim().split(/\s+/).length < 2) erro('nome', 'Informe nome e sobrenome.');
   if (!cpfValido(d.cpf)) erro('cpf', 'CPF inválido.');
-  else if (hs.some(h => h.cpf === soDig(d.cpf))) erro('cpf', 'Já existe uma conta com este CPF.');
   if (soDig(d.celular).length < 10) erro('celular', 'Celular incompleto.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) erro('email', 'E-mail inválido.');
-  else if (hs.some(h => h.email.toLowerCase() === d.email.trim().toLowerCase())) erro('email', 'Já existe uma conta com este e-mail.');
   if (d.senha.length < 6) erro('senha', 'A senha precisa ter pelo menos 6 caracteres.');
   if (d.senha !== d.conf) erro('conf', 'As senhas não conferem.');
   if (!ok) { f.querySelector('.invalido input')?.focus(); return; }
-  const h = db.add('hospedes', { id: uid('H'), criado: new Date().toISOString(), nome: d.nome.trim(), cpf: soDig(d.cpf), celular: d.celular, email: d.email.trim(), estado: d.estado, senha: await hash(d.senha) });
-  enviarEmail(h.email, '[Guará Bangalôs] Cadastro realizado', `<p>Olá, ${esc(h.nome)}! Seu cadastro no site da Guará Bangalôs foi criado. Use seu e-mail ou CPF para entrar.</p>`);
-  entrarComo({ tipo: 'hospede', id: h.id });
-  location.hash = destino(volta, '#/minhas-reservas'); render();
-};
+  try {
+    const r = await api('/api/cadastro', { metodo: 'POST', dados: { nome: d.nome, cpf: d.cpf, celular: d.celular, email: d.email, estado: d.estado, senha: d.senha } });
+    entrarComo({ tipo: r.tipo, token: r.token });
+    toast('Conta criada!');
+    await irPara(destino(volta, '#/minhas-reservas'));
+  } catch (e) { erroServidor(f, e, '#ret-cad'); }
+});
 
 // ----- Esqueceu a senha (igual ao original: texto + e-mail + Enviar; depois código e nova senha) -----
 P.recuperar = q => `<section class="login-unico"><div class="adm-card login-passo"><img src="${urlMidia(CMS.marca.logoDestaque)}" alt="" class="logo-pedra"><strong class="adm-marca">Guará Bangalôs</strong><h1>Redefinir senha</h1>
@@ -472,25 +458,20 @@ P.recuperar = q => `<section class="login-unico"><div class="adm-card login-pass
       <div class="forca" data-n=""><i></i><i></i><i></i><i></i><span></span></div></label>
     <button class="btn">Enviar</button></form>`}
   <div id="ret-rec"></div><a class="voltar-site" href="#/login">← Voltar ao login</a></div></section>`;
-window.pedirCodigo = f => {
+window.pedirCodigo = f => ocupado_(f, async () => {
   const email = f.email.value.trim().toLowerCase();
-  const l = db.get('hospedes'), h = l.find(x => x.email.toLowerCase() === email);
-  if (h) {
-    h.reset = { codigo: String(Math.floor(100000 + Math.random() * 900000)), ate: Date.now() + 30 * 60e3 }; db.set('hospedes', l);
-    enviarEmail(h.email, '[Guará Bangalôs] Código para redefinir a senha', `<p>Seu código de verificação é <b>${h.reset.codigo}</b>. Ele vale por 30 minutos.</p>`);
-  }
+  try { await api('/api/recuperar', { metodo: 'POST', dados: { email } }); }
+  catch (e) { return $('#ret-rec').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
   location.hash = '#/login?' + new URLSearchParams({ view: 'reset', codigo: '', email });
-};
-window.trocarSenha = async f => {
+});
+window.trocarSenha = f => ocupado_(f, async () => {
   const d = Object.fromEntries(new FormData(f));
   limparErros(f);
   if (d.senha.length < 6) return erroCampo(f, 'senha', 'A senha precisa ter pelo menos 6 caracteres.');
-  const l = db.get('hospedes'), h = l.find(x => x.email.toLowerCase() === d.email);
-  if (!h || !h.reset || h.reset.codigo !== d.codigo.trim() || Date.now() > h.reset.ate) return erroCampo(f, 'codigo', 'Código inválido ou expirado.');
-  h.senha = await hash(d.senha); delete h.reset; db.set('hospedes', l); localStorage.removeItem('tg_bloqueio');
-  enviarEmail(h.email, '[Guará Bangalôs] Sua senha foi alterada', `<p>A senha da sua conta foi alterada. Se não foi você, fale conosco pelo WhatsApp ${CMS.contato.telefone}.</p>`);
+  try { await api('/api/redefinir', { metodo: 'POST', dados: { email: d.email, codigo: d.codigo, senha: d.senha } }); }
+  catch (e) { return erroServidor(f, e, '#ret-rec'); }
   $('#ret-rec').innerHTML = '<p class="aviso">Senha alterada. <a href="#/login">Entrar agora</a></p>';
-};
+});
 
 // ---------- Área do hóspede: cabeçalho com abas (Minhas reservas / Meus dados) ----------
 const areaHospede = (h, aba, corpo) => banda('Área do hóspede', 'Área do hóspede') + `<section class="pagina-texto"><div class="container area-h">
@@ -518,28 +499,24 @@ P['meus-dados'] = () => {
     <label>Confirme a nova senha:${campoSenha('conf', 'required autocomplete="new-password"')}</label>
     <button class="btn">Alterar senha</button><div id="ret-senha"></div></form></section></div>`);
 };
-window.salvarDados = f => {
+window.salvarDados = f => ocupado_(f, async () => {
   const d = Object.fromEntries(new FormData(f)); limparErros(f);
-  const l = db.get('hospedes'), h = l.find(x => x.id === sessao().id);
   if (d.nome.trim().split(/\s+/).length < 2) return erroCampo(f, 'nome', 'Informe nome e sobrenome.');
   if (soDig(d.celular).length < 10) return erroCampo(f, 'celular', 'Celular incompleto.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) return erroCampo(f, 'email', 'E-mail inválido.');
-  if (l.some(x => x.id !== h.id && x.email.toLowerCase() === d.email.trim().toLowerCase())) return erroCampo(f, 'email', 'Este e-mail já é usado por outra conta.');
-  const antigo = h.email;
-  Object.assign(h, { nome: d.nome.trim(), celular: d.celular, email: d.email.trim(), estado: d.estado }); db.set('hospedes', l);
-  if (antigo !== h.email) enviarEmail(antigo, '[Guará Bangalôs] E-mail da conta alterado', `<p>O e-mail da sua conta foi alterado para ${esc(h.email)}. Se não foi você, fale conosco.</p>`);
+  try { await api('/api/eu', { metodo: 'PUT', dados: d }); await carregarDados(); }
+  catch (e) { return erroServidor(f, e, '#ret-dados'); }
   $('#ret-dados').innerHTML = '<p class="aviso">Dados salvos.</p>';
-};
-window.alterarSenha = async f => {
+});
+window.alterarSenha = f => ocupado_(f, async () => {
   const d = Object.fromEntries(new FormData(f)); limparErros(f);
-  const l = db.get('hospedes'), h = l.find(x => x.id === sessao().id);
-  if (h.senha !== await hash(d.atual)) return erroCampo(f, 'atual', 'Senha atual incorreta.');
   if (d.senha.length < 6) return erroCampo(f, 'senha', 'A senha precisa ter pelo menos 6 caracteres.');
   if (d.senha !== d.conf) return erroCampo(f, 'conf', 'As senhas não conferem.');
-  h.senha = await hash(d.senha); db.set('hospedes', l); f.reset(); f.querySelector('.forca').dataset.n = '';
-  enviarEmail(h.email, '[Guará Bangalôs] Sua senha foi alterada', `<p>A senha da sua conta foi alterada. Se não foi você, fale conosco pelo WhatsApp ${CMS.contato.telefone}.</p>`);
+  try { await api('/api/eu/senha', { metodo: 'POST', dados: { atual: d.atual, senha: d.senha } }); }
+  catch (e) { return erroServidor(f, e, '#ret-senha'); }
+  f.reset(); f.querySelector('.forca').dataset.n = '';
   $('#ret-senha').innerHTML = '<p class="aviso">Senha alterada.</p>';
-};
+});
 
 // ---------- Minhas reservas ----------
 P['minhas-reservas'] = () => {
@@ -571,64 +548,44 @@ P['minhas-reservas'] = () => {
   return areaHospede(h, 'reservas', hero + grupo('Próximas', proximas.slice(1)) + grupo('Anteriores', anteriores) + grupo('Canceladas', canceladas)
     + (rs.length ? `<p class="rh-politica">Cancelamento sem custo até 15 dias antes do check-in. <a href="#/politica">Ver política</a></p>` : ''));
 };
-window.cancelarMinha = id => {
-  const l = db.get('reservas'), r = l.find(x => x.id === id);
-  const dias = Math.round((new Date(r.entrada + 'T12:00') - new Date()) / 864e5);
-  if (dias < 15 && r.status !== 'aguardando') return alert(`Faltam ${dias} dia(s) para o check-in. Pela política, o cancelamento precisa de 15 dias de antecedência — fale conosco pelo WhatsApp.`);
+window.cancelarMinha = async id => {
+  const r = db.get('reservas').find(x => x.id === id); if (!r) return;
+  const dias = diasAte(r.entrada);
+  if (dias < 15 && r.status !== 'aguardando') return alert(`Faltam ${dias} dia(s) para o check-in. Pela política, o cancelamento precisa de 15 dias de antecedência. Fale conosco pelo WhatsApp.`);
   if (!confirm(`Cancelar a reserva ${r.id} (${dBR(r.entrada)} a ${dBR(r.saida)})? Essa ação não pode ser desfeita.`)) return;
-  r.status = 'cancelada'; db.set('reservas', l);
-  enviarEmail(r.email, `[Guará Bangalôs] Reserva ${r.id} cancelada`, `<p>Sua reserva foi cancelada:</p><p>${linhaReserva(r)}</p><p>Se já pagou o sinal, você pode deixar o valor como crédito, remarcar ou pedir devolução pelo WhatsApp.</p>`);
-  enviarEmail(POUSADA_EMAIL, `[Site] Reserva ${r.id} cancelada pelo hóspede`, `<p>${linhaReserva(r)}</p>`);
-  render();
+  try { await api(`/api/reservas/${id}/cancelar`, { metodo: 'POST' }); toast('Reserva cancelada. Enviamos a confirmação por e-mail.'); await atualizar(); }
+  catch (e) { alert(e.message); }
 };
-// cancelamento pelo formulário da página de política (código + e-mail)
-window.cancelar = f => {
-  const { id, email } = Object.fromEntries(new FormData(f));
-  const l = db.get('reservas'), r = l.find(x => x.id === id.trim().toUpperCase() && x.email.toLowerCase() === email.trim().toLowerCase());
-  const out = $('#ret-cancel');
-  if (!r) return out.innerHTML = '<p class="aviso erro">Reserva não encontrada.</p>';
-  if (r.status === 'cancelada') return out.innerHTML = '<p class="aviso">Essa reserva já está cancelada.</p>';
-  const dias = Math.round((new Date(r.entrada + 'T12:00') - new Date()) / 864e5);
-  if (dias < 15 && r.status !== 'aguardando') return out.innerHTML = `<p class="aviso erro">Faltam ${dias} dia(s) para o check-in. Pela política, o cancelamento precisa de 15 dias de antecedência — fale conosco pelo WhatsApp.</p>`;
-  r.status = 'cancelada'; db.set('reservas', l);
-  enviarEmail(r.email, `[Guará Bangalôs] Reserva ${r.id} cancelada`, `<p>Sua reserva foi cancelada:</p><p>${linhaReserva(r)}</p>`);
-  out.innerHTML = '<p class="aviso">Reserva cancelada. Você pode ficar com crédito, remarcar ou pedir devolução pelo WhatsApp.</p>';
-};
+// cancelamento com código + e-mail (formulário antigo da política)
+window.cancelar = f => ocupado_(f, async () => {
+  const { id, email } = Object.fromEntries(new FormData(f)), out = $('#ret-cancel');
+  try { await api('/api/cancelar-por-codigo', { metodo: 'POST', dados: { id, email } }); out.innerHTML = '<p class="aviso">Reserva cancelada. Você pode ficar com crédito, remarcar ou pedir devolução pelo WhatsApp.</p>'; }
+  catch (e) { out.innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
+});
 
 // ---------- Gestão (pousada) ----------
-window.confirmarPagamento = id => {
-  const l = db.get('reservas'), r = l.find(x => x.id === id);
-  r.status = 'confirmada'; r.confirmada = new Date().toISOString(); db.set('reservas', l);
-  enviarEmail(r.email, `[Guará Bangalôs] Reserva ${r.id} confirmada!`, `<p>Olá, ${esc(r.nome)}! Recebemos o pagamento do sinal e sua reserva está <b>confirmada</b>:</p><p>${linhaReserva(r)}</p>
-    <p>Restante a pagar no check-in: <b>${fmt(r.total - (r.sinal || r.total / 2))}</b>. Check-in a partir das 15h. O Guará Bangalôs fica na região do Vale da Lua, em Alto Paraíso de Goiás (GO).</p>`);
-  render();
+window.confirmarPagamento = async id => {
+  if (!confirm('Confirmar que o sinal desta reserva caiu na conta? O hóspede recebe um e-mail de confirmação.')) return;
+  try { await api(`/api/admin/reservas/${id}/confirmar`, { metodo: 'POST' }); toast('Reserva confirmada e hóspede avisado.'); await atualizar(); }
+  catch (e) { alert(e.message); }
 };
-window.cancelarGestao = id => {
-  if (!confirm('Cancelar esta reserva?')) return;
-  const l = db.get('reservas'), r = l.find(x => x.id === id);
-  r.status = 'cancelada'; db.set('reservas', l);
-  enviarEmail(r.email, `[Guará Bangalôs] Reserva ${r.id} cancelada`, `<p>Sua reserva foi cancelada pela pousada:</p><p>${linhaReserva(r)}</p><p>Em caso de dúvida, fale conosco pelo WhatsApp ${CMS.contato.telefone}.</p>`);
-  render();
+window.cancelarGestao = async id => {
+  if (!confirm('Cancelar esta reserva? O hóspede recebe um e-mail avisando.')) return;
+  try { await api(`/api/admin/reservas/${id}/cancelar`, { metodo: 'POST' }); toast('Reserva cancelada.'); await atualizar(); }
+  catch (e) { alert(e.message); }
+};
+// baixa o comprovante (precisa do login, por isso não é um link direto)
+window.verComprovante = async id => {
+  try {
+    const r = await fetch(API_BASE + `/api/admin/reservas/${id}/comprovante`, { headers: { Authorization: 'Bearer ' + tokenSessao() } });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || 'Não foi possível abrir.');
+    window.open(URL.createObjectURL(await r.blob()), '_blank');
+  } catch (e) { alert(e.message); }
 };
 
 // ---------- janela "Email" dos artigos (enviar link a um amigo) ----------
 window.abrirEmail = titulo => {
-  const m = document.createElement('div'); m.className = 'modal-fundo';
-  m.innerHTML = `<div class="modal"><button class="fechar-modal" aria-label="Fechar">×</button>
-    <h3>Enviar este link por e-mail</h3>
-    <form><label>E-mail para <span class="star">*</span><input type="email" name="para" required></label>
-      <label>Remetente <span class="star">*</span><input name="nome" required></label>
-      <label>Seu e-mail <span class="star">*</span><input type="email" name="de" required></label>
-      <label>Assunto <span class="star">*</span><input name="assunto" required value="${esc(titulo)}"></label>
-      <div><button class="btn">Enviar</button> <button type="button" class="btn btn-sec cancelar">Cancelar</button></div></form></div>`;
-  const fechar = () => m.remove();
-  m.addEventListener('click', e => { if (e.target === m || e.target.matches('.fechar-modal,.cancelar')) fechar(); });
-  m.querySelector('form').addEventListener('submit', e => {
-    e.preventDefault(); const d = Object.fromEntries(new FormData(e.target));
-    enviarEmail(d.para, d.assunto, `<p>Este é um link enviado por ${esc(d.nome)} (${esc(d.de)}):</p><p><a href="${esc(location.href)}">${esc(location.href)}</a></p>`);
-    m.querySelector('.modal').innerHTML = '<h3>O link foi enviado com sucesso.</h3><button class="btn" onclick="this.closest(\'.modal-fundo\').remove()">Fechar janela</button>';
-  });
-  document.body.appendChild(m); m.querySelector('input').focus();
+  location.href = 'mailto:?' + new URLSearchParams({ subject: titulo, body: location.href }).toString().replace(/\+/g, '%20');
 };
 
 // ---------- menu conforme quem está logado ----------
