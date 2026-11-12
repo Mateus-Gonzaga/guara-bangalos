@@ -31,7 +31,7 @@ function unidadesPadrao() {
 const CMS_PADRAO = () => ({
   marca: { nome: 'Guará Bangalôs', slogan: 'Ecolodge', logo: 'img/logo-guara.webp', logoDestaque: 'img/logo-guara-pedra.webp' },
   rodape: { pagamento: 'Trabalhamos com PIX ou transferências.' },
-  contato: { telefone: '(61) 99175-6887', whatsapp: '5561991756887', instagram: 'guarabangalos_chapada', email: 'guarabangalos@gmail.com' },
+  contato: { telefone: '(61) 99175-6887', whatsapp: '5561991756887', instagram: 'guarabangalos_chapada', email: 'guarabangaloschapada@gmail.com' },
   home: {
     titulo: 'Guará Bangalôs',
     subtitulo: 'Bangalôs no cerrado da Chapada dos Veadeiros, na região do Vale da Lua, em Alto Paraíso de Goiás.',
