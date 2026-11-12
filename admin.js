@@ -173,8 +173,8 @@ ADM.seguranca = () => {
     </section>
     <section class="adm-box"><div class="pn-tit"><h2>Automações e avisos</h2></div>
       <ul class="seg-lista">
-        <li><i class="fa fa-envelope"></i><div><b>E-mails</b><small>${db._d.config?.email ? 'Ativos (Resend)' : 'Desligados: falta a chave do Resend no servidor'}</small></div></li>
-        <li><i class="fab fa-whatsapp"></i><div><b>Aviso no WhatsApp da pousada</b><small>${db._d.config?.whatsapp ? 'Ativo (' + esc(db._d.config.whatsapp) + '): nova pré-reserva, comprovante, cancelamento e mensagem de contato' : 'Desligado: falta configurar o número e o serviço de envio no servidor'}</small></div></li>
+        <li><i class="fa fa-envelope"></i><div><b>E-mails</b><small>${db._d.config?.email ? 'Ativos' : 'Desligados: falta configurar o envio no servidor'}</small></div></li>
+        <li><i class="fab fa-whatsapp"></i><div><b>Aviso no WhatsApp da pousada</b><small>${db._d.config?.whatsapp ? 'Ativo: nova pré-reserva, comprovante, cancelamento e mensagem de contato' : 'Desligado: falta configurar o número e o serviço de envio no servidor'}</small></div></li>
         <li><i class="far fa-bell"></i><div><b>Lembrete de check-in</b><small>E-mail ao hóspede ${db._d.config?.lembrete_dias ?? 3} dias antes da chegada, com endereço e rota (reservas confirmadas)</small></div></li>
         <li><i class="fa fa-hourglass-half"></i><div><b>Cobrança do sinal</b><small>E-mail ao hóspede quando a pré-reserva passa 48 h sem pagamento</small></div></li>
       </ul>
