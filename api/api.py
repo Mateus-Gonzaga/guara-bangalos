@@ -10,7 +10,7 @@ Configuração por variáveis de ambiente (em produção: /etc/guara-api.env):
   GUARA_ESTATICO     pasta do site, só para testar localmente (em produção o Caddy serve o site)
   RESEND_API_KEY     chave do Resend; sem ela os e-mails ficam só registrados na Gestão
   EMAIL_DE           remetente, ex.: Guará Bangalôs <reservas@guarabangalos.com.br>
-  EMAIL_POUSADA      quem recebe os avisos, ex.: guarabangalos@gmail.com
+  EMAIL_POUSADA      quem recebe os avisos, ex.: guarabangaloschapada@gmail.com
   ADMIN_USUARIO      usuário da Gestão (padrão admin)
   ADMIN_SENHA_HASH   gerado com: python3 api.py --hash-senha
   SITE_URL           ex.: https://guarabangalos.com.br
@@ -32,7 +32,7 @@ DADOS = Path(os.environ.get('GUARA_DADOS', Path(__file__).with_name('dados')))
 ESTATICO = os.environ.get('GUARA_ESTATICO')
 RESEND_KEY = os.environ.get('RESEND_API_KEY', '').strip()
 EMAIL_DE = os.environ.get('EMAIL_DE', 'Guará Bangalôs <reservas@guarabangalos.com.br>')
-EMAIL_POUSADA = os.environ.get('EMAIL_POUSADA', 'guarabangalos@gmail.com')
+EMAIL_POUSADA = os.environ.get('EMAIL_POUSADA', 'guarabangaloschapada@gmail.com')
 ADMIN_USUARIO = os.environ.get('ADMIN_USUARIO', 'admin').lower()
 ADMIN_SENHA_HASH = os.environ.get('ADMIN_SENHA_HASH', '')
 SITE_URL = os.environ.get('SITE_URL', 'https://guarabangalos.com.br').rstrip('/')

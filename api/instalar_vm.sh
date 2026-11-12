@@ -21,7 +21,7 @@ GUARA_DADOS=/var/lib/guara
 SITE_URL=https://guarabangalos.com.br
 CORS_ORIGENS=https://mateus-gonzaga.github.io
 EMAIL_DE=Guará Bangalôs <reservas@guarabangalos.com.br>
-EMAIL_POUSADA=guarabangalos@gmail.com
+EMAIL_POUSADA=guarabangaloschapada@gmail.com
 ADMIN_USUARIO=admin
 ADMIN_SENHA_HASH=$HASH
 # cole a chave do Resend depois do sinal de igual e rode: sudo systemctl restart guara-api
