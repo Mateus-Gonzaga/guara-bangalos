@@ -1283,3 +1283,7 @@ input, select, textarea, .rs-datas, .rh-datas-g { border-radius:var(--raio-btn);
 .seg-lista li { display:flex; gap:12px; align-items:flex-start; border:1px solid #E7E1DA; border-radius:10px; padding:12px 14px; }
 .seg-lista i { color:var(--roxo); font-size:18px; margin-top:2px; }
 .seg-lista small { display:block; color:var(--suave); }
+/* selo Pet Friendly no canto superior esquerdo da foto da página inicial */
+.hero2-pet { position:absolute; top:24px; left:24px; width:150px; height:150px; border-radius:50%; z-index:2; filter:drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+@media (max-width:991px) { .hero2-pet { width:120px; height:120px; top:18px; left:18px; } }
+@media (max-width:640px) { .hero2-pet { width:84px; height:84px; top:14px; left:14px; } }

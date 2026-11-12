@@ -112,6 +112,7 @@ const P = {};
 P[''] = () => `
   <section class="hero2" style="background-image:linear-gradient(180deg, rgba(31,24,19,.15) 0%, rgba(31,24,19,.05) 40%, rgba(31,24,19,.78) 100%), url('${urlMidia(CMS.home.heroFoto)}')">
     <img class="hero2-lobo" src="${urlMidia(CMS.marca.logo)}" alt="" aria-hidden="true">
+    <img class="hero2-pet" src="img/selo-pet-friendly.webp" alt="Hospedagem Pet Friendly: aceitamos animais de estimação">
     <div class="container hero2-texto">
       <h1>${esc(CMS.home.titulo)}</h1>
       <p>${esc(CMS.home.subtitulo)}</p>
