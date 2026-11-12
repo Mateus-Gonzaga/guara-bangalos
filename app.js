@@ -357,7 +357,19 @@ function render() {
   aplicarGlobais();
   document.body.classList.remove('menu-aberto');
   window.scrollTo(0, 0);
+  negritoChapada(document.body);
   animar();
+}
+
+// "Chapada dos Veadeiros" sempre em negrito nos textos do site
+function negritoChapada(raiz) {
+  const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT, { acceptNode: n => /Chapada dos Veadeiros/.test(n.nodeValue) && !n.parentNode.closest('textarea, script, style, strong, b, .adm') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+  const nos = []; while (w.nextNode()) nos.push(w.currentNode);
+  for (const n of nos) {
+    const f = document.createDocumentFragment();
+    n.nodeValue.split(/(Chapada dos Veadeiros)/).forEach(p => f.appendChild(p === 'Chapada dos Veadeiros' ? Object.assign(document.createElement('strong'), { textContent: p }) : document.createTextNode(p)));
+    n.replaceWith(f);
+  }
 }
 
 // partes do index.html que também vêm do conteúdo editável

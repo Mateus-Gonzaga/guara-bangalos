@@ -271,7 +271,7 @@ P.confirmacao = id => {
         <p class="peq">Ou TED/transferência: ${PIX_TESTE.banco} · Ag. ${PIX_TESTE.agencia} · C/C ${PIX_TESTE.conta}</p></div></div>
       <hr><h4>Enviar comprovante</h4>
       <form onsubmit="event.preventDefault();enviarComprovante('${r.id}',this)"><input type="file" name="arq" accept="image/*,application/pdf" required> <button class="btn btn-sm">Enviar</button></form>
-      <p class="peq">Ou envie pelo <a target="_blank" href="https://wa.me/5561900000000?text=${msg}">WhatsApp</a>.</p>
+      <p class="peq">Ou envie pelo <a target="_blank" href="https://wa.me/${esc(CMS.contato.whatsapp)}?text=${msg}">WhatsApp</a>.</p>
       <p class="peq aviso-teste">Dados de pagamento fictícios: este é um site de demonstração.</p></div>` : '';
   return banda('Reservas') + `<section class="page-body"><div class="container" style="max-width:760px">
     <div class="checkout-title"><h3>Reserva ${r.id}</h3></div>
