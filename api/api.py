@@ -369,6 +369,8 @@ def cadastro(req):
     if len(so_dig(d.get('celular'))) < 10: raise Erro('Celular incompleto.', campo='celular')
     if not EMAIL_RE.match(email): raise Erro('E-mail inválido.', campo='email')
     if len(senha) < 6: raise Erro('A senha precisa ter pelo menos 6 caracteres.', campo='senha')
+    if email.lower() == ADMIN_USUARIO:
+        raise Erro('Este e-mail não pode ser usado para cadastro de hóspede.', campo='email')
     with TRAVA, conexao() as c:
         if c.execute('SELECT 1 FROM hospedes WHERE cpf=?', (so_dig(d['cpf']),)).fetchone():
             raise Erro('Já existe uma conta com este CPF.', campo='cpf')
