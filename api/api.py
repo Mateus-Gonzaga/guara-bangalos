@@ -83,9 +83,10 @@ def criar_banco():
         CREATE TABLE IF NOT EXISTS cms (id INTEGER PRIMARY KEY CHECK (id = 1), conteudo TEXT, atualizado TEXT);
         CREATE TABLE IF NOT EXISTS auditoria (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT, quem TEXT, ip TEXT, acao TEXT, detalhe TEXT, resultado TEXT);
         CREATE TABLE IF NOT EXISTS whatsapp (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT, texto TEXT, status TEXT);
+        CREATE TABLE IF NOT EXISTS cupons (email TEXT PRIMARY KEY COLLATE NOCASE, codigo TEXT UNIQUE, porcentagem REAL, criado TEXT, reserva TEXT, usado_em TEXT);
         ''')
         colunas = {r[1] for r in c.execute('PRAGMA table_info(reservas)')}
-        for col in ('lembrete_checkin', 'cobranca_sinal'):
+        for col in ('lembrete_checkin', 'cobranca_sinal', 'cupom', 'desconto'):
             if col not in colunas:
                 c.execute(f'ALTER TABLE reservas ADD COLUMN {col} TEXT')
 
@@ -541,14 +542,25 @@ def reservar(req):
             auditar(req, 'reserva: valor divergente', f'enviado {total}, correto {total_srv}', 'recusado')
             raise Erro('Os preços foram atualizados. Recarregue a página e confira o novo total.', 409)
         total, sinal = total_srv, sinal_srv
+        cupom, desconto = None, 0.0
+        if str(d.get('cupom') or '').strip():
+            cp = cupom_valido(c, d.get('cupom'))
+            if not cp:
+                raise Erro('Cupom inválido ou já usado. Remova o cupom ou confira o código.', 400, 'cupom')
+            cupom, desconto = cp['codigo'], round(total * float(cp['porcentagem']) / 100, 2)
+            total = round(total - desconto, 2)
+            sinal = round(total * float((cms.get('precos') or {}).get('sinal') or 50)) / 100
         if c.execute("SELECT 1 FROM reservas WHERE unidade=? AND status!='cancelada' AND entrada < ? AND saida > ?", (un, str(sai), str(ent))).fetchone():
             raise Erro('Essas datas acabaram de ficar indisponíveis. Escolha outras no calendário.', 409)
         r = {'id': novo_id('GB'), 'criada': agora(), 'status': 'aguardando', 'hospede': h['id'], 'unidade': un,
              'unidade_nome': str(u.get('nome'))[:80], 'entrada': str(ent), 'saida': str(sai),
              'adultos': adultos, 'criancas': criancas, 'bebe': bebe, 'total': total, 'sinal': sinal,
              'nome': str(d.get('nome') or h['nome'])[:120], 'email': h['email'], 'telefone': str(d.get('celular') or h['celular'])[:20],
-             'cpf': h['cpf'], 'chegada': str(d.get('chegada', ''))[:5], 'pagamento': str(d.get('pagamento', ''))[:30], 'obs': str(d.get('obs', ''))[:1000]}
+             'cpf': h['cpf'], 'chegada': str(d.get('chegada', ''))[:5], 'pagamento': str(d.get('pagamento', ''))[:30], 'obs': str(d.get('obs', ''))[:1000],
+             'cupom': cupom, 'desconto': desconto}
         c.execute(f"INSERT INTO reservas ({','.join(r)}) VALUES ({','.join('?' * len(r))})", tuple(r.values()))
+        if cupom:
+            c.execute('UPDATE cupons SET reserva=?, usado_em=? WHERE codigo=?', (r['id'], agora(), cupom))
     auditar(req, 'reserva criada', f"{r['id']} {r['unidade_nome']} {r['entrada']} a {r['saida']} {moeda(total)}")
     enviar_email(r['email'], f"[Guará Bangalôs] Pré-reserva {r['id']} recebida",
                  f"<p>Olá, {esc(r['nome'])}!</p><p>Recebemos sua pré-reserva:</p><p><b>{linha_reserva(r)}</b></p>"
@@ -558,7 +570,8 @@ def reservar(req):
     enviar_email(EMAIL_POUSADA, f"[Site] Nova pré-reserva {r['id']} — {r['nome']}",
                  f"<p>Nova pré-reserva de <b>{esc(r['nome'])}</b> ({esc(r['email'])}, {esc(r['telefone'])}):</p><p>{linha_reserva(r)}</p>"
                  f"<p>Chegada prevista: {esc(r['chegada'] or '—')} · Pagamento: {esc(r['pagamento'])}</p><p>Observações: {esc(r['obs'] or '—')}</p>"
-                 f"<p><a href=\"{SITE_URL}/#/gestao?aba=reservas&busca={r['id']}\">Abrir na Gestão</a></p>", responder_para=r['email'])
+                 + (f"<p>Cupom {cupom}: desconto de {moeda(desconto)} já aplicado no total.</p>" if cupom else '')
+                 +                  f"<p><a href=\"{SITE_URL}/#/gestao?aba=reservas&busca={r['id']}\">Abrir na Gestão</a></p>", responder_para=r['email'])
     avisar_whatsapp(f"🏡 Nova pré-reserva {r['id']}\n{r['nome']} · {r['telefone']}\n{r['unidade_nome']}: {dbr(r['entrada'])} a {dbr(r['saida'])}\nTotal {moeda(r['total'])} · sinal {moeda(r['sinal'])}\n{SITE_URL}/#/gestao?aba=reservas&busca={r['id']}")
     return publica_reserva(r)
 
@@ -596,6 +609,7 @@ def comprovante(req, rid):
 
 def cancelar_reserva(c, r, por):
     c.execute("UPDATE reservas SET status='cancelada' WHERE id=?", (r['id'],))
+    c.execute('UPDATE cupons SET reserva=NULL, usado_em=NULL WHERE reserva=?', (r['id'],))  # cupom volta a valer
     c.commit()  # libera o banco antes de registrar os e-mails
     if por == 'pousada':
         enviar_email(r['email'], f"[Guará Bangalôs] Reserva {r['id']} cancelada", f"<p>Sua reserva foi cancelada pela pousada:</p><p>{linha_reserva(r)}</p><p>Em caso de dúvida, responda este e-mail ou fale conosco pelo WhatsApp.</p>")
@@ -637,6 +651,73 @@ def cancelar_codigo(req):
     return {'ok': True}
 
 
+# ----- cupom de desconto (pop-up do site)
+def cupom_config(c):
+    cfg = (cms_atual(c) or {}).get('cupom') or {}
+    ativo = str(cfg.get('ativo', '')).lower() in ('sim', 'true', '1')
+    try:
+        pct = max(0.0, min(50.0, float(cfg.get('porcentagem') or 0)))
+    except (TypeError, ValueError):
+        pct = 0.0
+    return ativo and pct > 0, pct
+
+
+def cupom_valido(c, codigo):
+    """Devolve a linha do cupom se o código existe e ainda não foi usado numa reserva ativa."""
+    codigo = str(codigo or '').strip().upper()
+    if not re.fullmatch(r'GUARA-[A-Z0-9]{6}', codigo):
+        return None
+    return c.execute('SELECT * FROM cupons WHERE codigo=? AND reserva IS NULL', (codigo,)).fetchone()
+
+
+@rota('POST', '/api/cupom')
+def cupom_pedir(req):
+    email = str(req.json.get('email', '')).strip()
+    if str(req.json.get('site', '')).strip():
+        return {'ok': True}  # robô
+    if not EMAIL_RE.match(email) or len(email) > 120:
+        raise Erro('Digite um e-mail válido.', campo='email')
+    if limite('cupom:' + req.ip, 5, 3600):
+        raise Erro('Muitos pedidos seguidos. Tente de novo mais tarde.', 429)
+    registra('cupom:' + req.ip)
+    with TRAVA, conexao() as c:
+        ativo, pct = cupom_config(c)
+        if not ativo:
+            raise Erro('A promoção não está ativa no momento.', 410)
+        r = c.execute('SELECT * FROM cupons WHERE email=?', (email,)).fetchone()
+        if r and r['reserva']:
+            raise Erro('Este e-mail já usou o cupom de desconto.', campo='email')
+        if r:
+            codigo, pct = r['codigo'], r['porcentagem']
+        else:
+            alfa = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+            while True:
+                codigo = 'GUARA-' + ''.join(secrets.choice(alfa) for _ in range(6))
+                if not c.execute('SELECT 1 FROM cupons WHERE codigo=?', (codigo,)).fetchone():
+                    break
+            c.execute('INSERT INTO cupons (email,codigo,porcentagem,criado) VALUES (?,?,?,?)', (email, codigo, pct, agora()))
+    pct_txt = f'{pct:g}'.replace('.', ',')
+    enviar_email(email, f'[Guará Bangalôs] Seu cupom de {pct_txt}% de desconto',
+                 f"<p>Que bom ter você por aqui!</p><p>Este é o seu cupom de <b>{pct_txt}% de desconto</b> na primeira reserva:</p>"
+                 f"<p style=\"font:bold 26px Georgia,serif;letter-spacing:3px;background:#F5F0EA;border:2px dashed #A0522D;border-radius:10px;padding:14px;text-align:center\">{codigo}</p>"
+                 f"<p>Escolha o bangalô e as datas e digite o código na tela de confirmação da reserva. O desconto vale para o total da hospedagem, uma vez.</p>"
+                 f"<p><a href=\"{SITE_URL}/#/reservas\" style=\"background:#A0522D;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none\">Escolher as datas</a></p>"
+                 f"<p style=\"font-size:12px;color:#7a6f64\">Você recebeu este e-mail porque pediu o cupom no site. Também enviaremos novidades e ofertas da pousada de vez em quando; para não receber mais, é só responder pedindo.</p>")
+    return {'ok': True}
+
+
+@rota('GET', r'/api/cupom/([A-Za-z0-9-]{1,20})')
+def cupom_conferir(req, codigo):
+    if limite('cupchk:' + req.ip, 20, 600):
+        raise Erro('Muitas tentativas. Tente de novo em alguns minutos.', 429)
+    registra('cupchk:' + req.ip)
+    with conexao() as c:
+        r = cupom_valido(c, codigo)
+    if not r:
+        raise Erro('Cupom inválido ou já usado.', 404, 'cupom')
+    return {'codigo': r['codigo'], 'porcentagem': r['porcentagem']}
+
+
 # ----- contato
 @rota('POST', '/api/contato')
 def contato(req):
@@ -671,6 +752,7 @@ def admin_dados(req):
             'contatos': [dict(m) for m in c.execute('SELECT * FROM contatos ORDER BY data DESC LIMIT 300')],
             'auditoria': [dict(m) for m in c.execute('SELECT * FROM auditoria ORDER BY id DESC LIMIT 300')],
             'whatsapp': [dict(m) for m in c.execute('SELECT * FROM whatsapp ORDER BY id DESC LIMIT 100')],
+            'cupons': [dict(m) for m in c.execute('SELECT * FROM cupons ORDER BY criado DESC')],
             'config': {'email': bool(RESEND_KEY), 'whatsapp': WPP_MODO or '', 'lembrete_dias': LEMBRETE_DIAS},
         }
 

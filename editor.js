@@ -5,7 +5,7 @@ ABAS.splice(1, 0, ['site', 'fa-pen-nib', 'Editar site']);
 
 const SECOES = [
   ['inicio', 'Página inicial'], ['chales', 'Chalés'], ['precos', 'Preços e regras'],
-  ['fotos', 'Galeria de fotos'], ['paginas', 'Textos das páginas'], ['contato', 'Contato, mapa e PIX'], ['marca', 'Logos e rodapé'], ['backup', 'Backup'],
+  ['fotos', 'Galeria de fotos'], ['paginas', 'Textos das páginas'], ['contato', 'Contato, mapa e PIX'], ['marca', 'Logos e rodapé'], ['cupom', 'Cupom de desconto'], ['backup', 'Backup'],
 ];
 const pegar = k => k.split('.').reduce((o, p) => (o == null ? o : o[p]), CMS);
 function pôr(k, v, raiz = CMS) {
@@ -143,6 +143,25 @@ ED.contato = () => formulario('contato',
     <div class="ed-3">${CMS.local.passos.map((_, i) => `<div class="ed-card">${campo(`local.passos.${i}.titulo`, `Passo ${i + 1} do trajeto`)}${campo(`local.passos.${i}.sub`, 'Detalhe')}</div>`).join('')}</div>`) +
   bloco('Dados para pagamento (PIX)', `<div class="ed-2">${campo('pix.chave', 'Chave PIX')}${campo('pix.favorecido', 'Favorecido')}${campo('pix.banco', 'Banco')}<div class="ed-2">${campo('pix.agencia', 'Agência')}${campo('pix.conta', 'Conta')}</div></div>`), '', '#/');
 
+ED.cupom = () => {
+  const cs = db.get('cupons'), usados = cs.filter(c => c.reserva).length;
+  return formulario('cupom',
+    bloco('Pop-up de desconto', `<div class="ed-3"><label class="ed-campo"><span>Pop-up ligado?</span><select data-k="cupom.ativo"><option value="sim" ${CMS.cupom.ativo === 'sim' ? 'selected' : ''}>Sim, mostrar no site</option><option value="nao" ${CMS.cupom.ativo !== 'sim' ? 'selected' : ''}>Não, desligado</option></select></label>
+      ${campo('cupom.porcentagem', 'Desconto (%)', 'De 1 a 50. Vale para os cupons pedidos a partir de agora.', 'number')}${campo('cupom.atraso', 'Abrir depois de (segundos)', 'No computador também abre quando o mouse vai sair da página.', 'number')}</div>
+      ${campo('cupom.titulo', 'Título', 'Use {p} onde deve aparecer a porcentagem. Ex.: {p}% de desconto na sua primeira estadia')}${texto('cupom.texto', 'Texto', '', 2)}
+      <p><button type="button" class="btn btn-sm btn-claro" onclick="localStorage.removeItem('tg_cupom');window.open(location.pathname+'#/','_blank')"><i class="fa fa-external-link-alt"></i> Ver o pop-up no site</button></p>`,
+      'Abre uma vez para cada visitante nas páginas do site (não aparece para quem está logado nem nas telas de reserva).') +
+    bloco(`E-mails cadastrados <span class="badge">${cs.length}</span>`, cs.length ? `<p class="peq">${usados} cupom(ns) já usado(s) em reservas. <button type="button" class="link-acao" onclick="baixarEmailsCupom()">Baixar lista (CSV)</button></p>
+      <table><tr><th>E-mail</th><th>Código</th><th>Desconto</th><th>Pedido em</th><th>Usado</th></tr>${cs.map(c => `<tr><td>${esc(c.email)}</td><td>${esc(c.codigo)}</td><td>${pctTxt(c.porcentagem)}%</td><td>${new Date(c.criado).toLocaleDateString('pt-BR')}</td><td>${c.reserva ? `<a href="#/gestao?aba=reservas&busca=${esc(c.reserva)}">${esc(c.reserva)}</a>` : '—'}</td></tr>`).join('')}</table>`
+      : '<p class="peq">Ninguém pediu o cupom ainda.</p>'));
+};
+window.baixarEmailsCupom = () => {
+  const linhas = [['email', 'codigo', 'desconto', 'pedido_em', 'reserva'], ...db.get('cupons').map(c => [c.email, c.codigo, c.porcentagem, c.criado, c.reserva || ''])];
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + linhas.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n')], { type: 'text/csv' }));
+  a.download = `emails-cupom-${hoje()}.csv`; a.click();
+};
+
 ED.marca = () => formulario('marca',
   bloco('Logos', `<div class="ed-2">${foto('marca.logo', 'Logo principal (redonda)')}${foto('marca.logoDestaque', 'Logo de destaque')}</div><p class="peq">A logo principal aparece no cabeçalho, no menu da Gestão e, em transparência, sobre a foto do topo. A de destaque aparece na tela de login. Use imagens quadradas.</p>`, 'Cabeçalho de todas as páginas, tela de login e topo da página inicial.') +
   bloco('Rodapé', campo('rodape.pagamento', 'Frase sobre formas de pagamento'), 'Coluna "Formas de pagamento" no rodapé de todas as páginas.') +
@@ -203,6 +222,7 @@ marcarAlterado = el => { _marcar(el); clearTimeout(tPrevia); tPrevia = setTimeou
 
 // ---------- aba na Gestão ----------
 const INTRO = {
+  cupom: 'Pop-up que oferece um cupom de desconto em troca do e-mail do visitante. O código chega por e-mail e vale uma vez, na reserva.',
   inicio: 'Textos e fotos da página inicial: topo, chalés, destaques e piscina.',
   chales: 'Cada unidade que aparece em Acomodações e Reservas: nome, capacidade, preço, descrição e fotos.',
   precos: 'Valores cobrados nas reservas, regras de estadia e feriados. Mudanças valem para novas reservas.',

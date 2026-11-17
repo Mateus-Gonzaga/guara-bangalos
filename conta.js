@@ -204,7 +204,7 @@ P.reservar = q => {
   const regra = regraPeriodo(q.entrada, q.saida);
   if (regra || ocupado(u.id, q.entrada, q.saida)) return banda('Reservas') + `<section class="page-body"><div class="container"><div class="alert-danger">${regra || 'Período não disponível.'}</div><a class="btn" href="#/reservas">Voltar</a></div></section>`;
   const h = hospedeAtual();
-  const o = orcamento(u, q.entrada, q.saida, q.adultos, q.criancas);
+  const o = comCupom(orcamento(u, q.entrada, q.saida, q.adultos, q.criancas));
   const voltar = encodeURIComponent(location.hash);
   const dados = h ? `<form id="dados" class="checkout-box" onsubmit="event.preventDefault();confirmarReserva(this)">
       <div class="checkout-title"><h3>Seus dados</h3></div>
@@ -232,6 +232,7 @@ P.reservar = q => {
       <div class="kv"><span>Saída</span><b>${dBR(q.saida)} (até às 12h)</b></div>
       <div class="kv"><span>Hóspedes</span><b>${q.adultos} adulto(s), ${q.criancas} criança(s), ${q.bebe || 0} bebê(s)</b></div>
       <ul class="diarias">${o.linhas.map(l => `<li><span>${dBR(l.d)} · ${l.tipo}</span><span>${fmt(l.v + l.extra)}</span></li>`).join('')}</ul>
+      ${h ? caixaCupom(o) : ''}
       <div class="total"><span>Valor Total:</span><b>${fmt(o.total)}</b></div>
       <div id="pagamento"><h4><i class="fa fa-qrcode"></i> Pagamento</h4>
         <p>Pagamento de <b>50% (${fmt(o.sinal)})</b> na data da reserva e <b>50% (${fmt(o.total - o.sinal)})</b> no check-in, via PIX, TED ou transferência bancária.</p>
@@ -246,10 +247,12 @@ window.confirmarReserva = f => ocupado_(f, async () => {
   if (!h) return;
   const o = orcamento(u, q.entrada, q.saida, q.adultos, q.criancas);
   const d = Object.fromEntries(new FormData(f));
+  if (cupomAplicado) d.cupom = cupomAplicado.codigo;
   try {
     const r = await api('/api/reservas', { metodo: 'POST', dados: {
       unidade: u.id, entrada: q.entrada, saida: q.saida, adultos: +q.adultos, criancas: +q.criancas, bebe: +(q.bebe || 0),
-      total: o.total, sinal: o.sinal, nome: d.nome, celular: d.celular, chegada: d.chegada, pagamento: d.pagamento, obs: d.obs } });
+      total: o.total, sinal: o.sinal, nome: d.nome, celular: d.celular, chegada: d.chegada, pagamento: d.pagamento, obs: d.obs, cupom: d.cupom } });
+    cupomAplicado = null;
     toast('Pré-reserva feita! Enviamos os detalhes para o seu e-mail.');
     await irPara('#/confirmacao/' + r.id);
   } catch (e) { alert(e.message); if (e.status === 409) atualizar(); }
@@ -587,6 +590,93 @@ window.verComprovante = async id => {
 window.abrirEmail = titulo => {
   location.href = 'mailto:?' + new URLSearchParams({ subject: titulo, body: location.href }).toString().replace(/\+/g, '%20');
 };
+
+// ---------- pop-up do cupom de desconto ----------
+// Aparece uma vez para o visitante (depois de alguns segundos ou quando o mouse vai sair da página).
+// Quem fecha não vê de novo por 30 dias; quem pede o cupom não vê mais.
+const pctTxt = p => String(+p).replace('.', ',');
+const cupomLigado = () => CMS.cupom && CMS.cupom.ativo === 'sim' && +CMS.cupom.porcentagem > 0;
+const ROTAS_SEM_CUPOM = /^#\/(gestao|login|cadastro|reservar|confirmacao|minhas-reservas|meus-dados|admin)/;
+function podeMostrarCupom() {
+  if (!cupomLigado() || sessao() || ROTAS_SEM_CUPOM.test(location.hash) || document.querySelector('.cupom-modal')) return false;
+  const v = JSON.parse(localStorage.getItem('tg_cupom') || '{}');
+  return !v.enviado && !(v.fechado && Date.now() - v.fechado < 30 * 864e5);
+}
+function abrirCupom() {
+  if (!podeMostrarCupom()) return;
+  const C = CMS.cupom, foto = (UN[0] && UN[0].fotos[0]) || urlMidia(CMS.home.chalesFoto);
+  const d = document.createElement('dialog'); d.className = 'cupom-modal'; d.setAttribute('aria-labelledby', 'cupom-tit');
+  d.innerHTML = `<div class="cupom-card">
+    <img class="cupom-foto" src="${esc(foto)}" alt="">
+    <div class="cupom-corpo">
+      <button type="button" class="cupom-fechar" aria-label="Fechar"><i class="fa fa-times" aria-hidden="true"></i></button>
+      <div class="cupom-passo">
+        <p class="cupom-selo"><i class="fa fa-ticket-alt" aria-hidden="true"></i> Primeira reserva</p>
+        <h2 id="cupom-tit">${esc(C.titulo.replace('{p}', pctTxt(C.porcentagem)))}</h2>
+        <p class="cupom-texto">${esc(C.texto)}</p>
+        <form novalidate>
+          <label>Seu e-mail<input type="email" name="email" autocomplete="email" inputmode="email" required placeholder="nome@email.com"></label>
+          <input name="site" tabindex="-1" autocomplete="off" aria-hidden="true" class="pote">
+          <button class="btn btn-block">Receber meu cupom <i class="fa fa-arrow-right" aria-hidden="true"></i></button>
+          <p class="cupom-erro" role="alert"></p>
+        </form>
+        <p class="cupom-letra">O código vai só para esse e-mail. Sem spam: só novidades da pousada.</p>
+      </div>
+    </div></div>`;
+  const fechar = (lembrar = true) => {
+    if (lembrar) { const v = JSON.parse(localStorage.getItem('tg_cupom') || '{}'); localStorage.setItem('tg_cupom', JSON.stringify({ ...v, fechado: Date.now() })); }
+    d.classList.add('saindo'); setTimeout(() => d.remove(), 180);
+  };
+  d.querySelector('.cupom-fechar').onclick = () => fechar();
+  d.addEventListener('cancel', e => { e.preventDefault(); fechar(); });
+  d.addEventListener('click', e => { if (e.target === d) fechar(); });
+  d.querySelector('form').onsubmit = async e => {
+    e.preventDefault();
+    const f = e.target, email = f.email.value.trim(), erro = f.querySelector('.cupom-erro'), b = f.querySelector('button');
+    erro.textContent = '';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { erro.textContent = 'Digite um e-mail válido.'; f.email.focus(); return; }
+    b.disabled = true; b.classList.add('carregando');
+    try {
+      await api('/api/cupom', { metodo: 'POST', dados: { email, site: f.site.value } });
+      localStorage.setItem('tg_cupom', JSON.stringify({ enviado: Date.now() }));
+      d.querySelector('.cupom-passo').innerHTML = `<p class="cupom-selo ok"><i class="fa fa-check" aria-hidden="true"></i> Cupom enviado</p>
+        <h2 id="cupom-tit">Confira seu e-mail</h2>
+        <p class="cupom-texto">Mandamos o código de ${pctTxt(C.porcentagem)}% para <b>${esc(email)}</b>. Se não aparecer em alguns minutos, olhe também no spam.</p>
+        <p class="cupom-texto">Use o código na tela de confirmação da reserva.</p>
+        <a class="btn btn-block" href="#/reservas">Escolher as datas</a>`;
+      d.querySelector('.cupom-passo a').onclick = () => fechar(false);
+    } catch (err) { erro.textContent = err.message; b.disabled = false; b.classList.remove('carregando'); }
+  };
+  document.body.appendChild(d); d.showModal();
+  setTimeout(() => d.querySelector('input[type=email]')?.focus({ preventScroll: true }), 50);
+}
+window.abrirCupom = abrirCupom;
+let tCupom;
+function agendarCupom() {
+  clearTimeout(tCupom);
+  if (podeMostrarCupom()) tCupom = setTimeout(abrirCupom, Math.max(2, +CMS.cupom.atraso || 8) * 1000);
+}
+// computador: abre também quando o mouse sai pelo topo (indo fechar a aba)
+document.addEventListener('mouseout', e => { if (!e.relatedTarget && e.clientY <= 0 && podeMostrarCupom()) { clearTimeout(tCupom); abrirCupom(); } });
+
+// ---------- cupom na confirmação da reserva ----------
+let cupomAplicado = null; // { codigo, porcentagem }
+window.aplicarCupom = async f => {
+  const cod = f.cupom.value.trim().toUpperCase(), out = f.querySelector('.cupom-ret');
+  if (!cod) return;
+  const b = f.querySelector('button'); b.disabled = true;
+  try { cupomAplicado = await api('/api/cupom/' + encodeURIComponent(cod)); render(); }
+  catch (e) { out.innerHTML = `<span class="erro">${esc(e.message)}</span>`; b.disabled = false; }
+};
+window.tirarCupom = () => { cupomAplicado = null; render(); };
+const comCupom = o => {
+  if (!cupomAplicado) return { ...o, desconto: 0 };
+  const desconto = Math.round(o.total * cupomAplicado.porcentagem) / 100, total = Math.round((o.total - desconto) * 100) / 100;
+  return { ...o, desconto, total, sinal: Math.round(total * (+CMS.precos.sinal || 50)) / 100 };
+};
+const caixaCupom = o => cupomAplicado
+  ? `<div class="cupom-aplicado"><span><i class="fa fa-ticket-alt" aria-hidden="true"></i> Cupom <b>${esc(cupomAplicado.codigo)}</b> · ${pctTxt(cupomAplicado.porcentagem)}% de desconto</span><span>− ${fmt(o.desconto)}</span><button type="button" class="link-acao" onclick="tirarCupom()">remover</button></div>`
+  : `<form class="cupom-campo" onsubmit="event.preventDefault();aplicarCupom(this)"><label>Cupom de desconto<span><input name="cupom" autocomplete="off" placeholder="GUARA-XXXXXX" maxlength="12"><button class="btn btn-sm btn-claro">Aplicar</button></span></label><small class="cupom-ret" role="status"></small></form>`;
 
 // ---------- menu conforme quem está logado ----------
 function atualizarMenu() {

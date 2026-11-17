@@ -14,7 +14,7 @@ async function carregarDados() {
   try {
     if (s?.tipo === 'admin') {
       const d = await api('/api/admin/dados');
-      db._d = { reservas: d.reservas, hospedes: d.hospedes, emails: d.emails, contatos: d.contatos, auditoria: d.auditoria, whatsapp: d.whatsapp, config: d.config };
+      db._d = { reservas: d.reservas, hospedes: d.hospedes, emails: d.emails, contatos: d.contatos, auditoria: d.auditoria, whatsapp: d.whatsapp, config: d.config, cupons: d.cupons };
       return;
     }
     const [ocup, eu] = await Promise.all([api('/api/ocupacao'), s?.tipo === 'hospede' ? api('/api/eu').catch(() => null) : null]);
@@ -359,6 +359,7 @@ function render() {
   document.body.classList.remove('menu-aberto');
   window.scrollTo(0, 0);
   negritoChapada(document.body);
+  if (typeof agendarCupom === 'function') agendarCupom();
   animar();
 }
 

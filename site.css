@@ -1287,3 +1287,43 @@ input, select, textarea, .rs-datas, .rh-datas-g { border-radius:var(--raio-btn);
 .hero2-pet { position:absolute; top:24px; left:24px; width:150px; height:150px; border-radius:50%; z-index:2; filter:drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
 @media (max-width:991px) { .hero2-pet { width:120px; height:120px; top:18px; left:18px; } }
 @media (max-width:640px) { .hero2-pet { width:84px; height:84px; top:14px; left:14px; } }
+
+/* ===== pop-up do cupom de desconto ===== */
+.cupom-modal { border:0; padding:0; background:transparent; max-width:min(760px, calc(100vw - 32px)); width:100%; overflow:visible; }
+.cupom-modal::backdrop { background:rgba(31,24,19,.62); backdrop-filter:blur(2px); }
+.cupom-card { display:grid; grid-template-columns:5fr 6fr; background:#fff; border-radius:var(--raio-img, 12px); overflow:hidden; box-shadow:0 24px 64px rgba(31,24,19,.35); }
+.cupom-foto { width:100%; height:100%; min-height:420px; object-fit:cover; display:block; }
+.cupom-corpo { position:relative; padding:44px 40px 32px; display:flex; flex-direction:column; justify-content:center; color:var(--noite); }
+.cupom-fechar { position:absolute; top:10px; right:10px; width:44px; height:44px; border:0; border-radius:50%; background:transparent; color:var(--suave); font-size:18px; cursor:pointer; transition:background .15s, color .15s; }
+.cupom-fechar:hover { background:var(--nevoa); color:var(--noite); }
+.cupom-fechar:focus-visible { outline:2px solid var(--roxo); outline-offset:2px; }
+.cupom-selo { display:inline-flex; align-items:center; gap:8px; margin:0 0 14px; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--roxo); }
+.cupom-selo.ok { color:#3D6B35; }
+.cupom-corpo h2 { font:700 30px/1.15 Georgia, serif; margin:0 0 12px; color:var(--noite); }
+.cupom-texto { margin:0 0 18px; font-size:16px; line-height:1.55; color:var(--suave); }
+.cupom-corpo form label { display:block; font-size:14px; font-weight:600; color:var(--noite); }
+.cupom-corpo form input[type=email] { display:block; width:100%; margin:6px 0 12px; padding:13px 14px; font-size:16px; border:1px solid #D9D0C6; border-radius:var(--raio-btn, 8px); background:#fff; color:var(--noite); }
+.cupom-corpo form input[type=email]:focus { outline:2px solid var(--roxo); outline-offset:1px; border-color:var(--roxo); }
+.cupom-corpo .btn { min-height:48px; font-size:16px; display:inline-flex; align-items:center; justify-content:center; gap:10px; }
+.cupom-erro { min-height:20px; margin:8px 0 0; font-size:14px; color:#B5462A; }
+.cupom-letra { margin:6px 0 0; font-size:12.5px; color:var(--suave); }
+.cupom-modal[open] .cupom-card { animation:cupom-entra .28s cubic-bezier(.2,.8,.2,1); }
+.cupom-modal.saindo .cupom-card { opacity:0; transform:translateY(8px); transition:opacity .18s, transform .18s; }
+@keyframes cupom-entra { from { opacity:0; transform:translateY(14px) scale(.985); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .cupom-modal[open] .cupom-card { animation:none; } .cupom-modal.saindo .cupom-card { transition:none; } }
+@media (max-width:640px) {
+  .cupom-card { grid-template-columns:1fr; }
+  .cupom-foto { min-height:0; height:150px; }
+  .cupom-corpo { padding:26px 22px 22px; }
+  .cupom-corpo h2 { font-size:24px; }
+  .cupom-fechar { top:-150px; right:6px; background:rgba(255,255,255,.92); color:var(--noite); }
+}
+
+/* cupom na confirmação da reserva */
+.cupom-campo { margin:14px 0 6px; }
+.cupom-campo label { display:block; font-size:14px; font-weight:600; }
+.cupom-campo label > span { display:flex; gap:8px; margin-top:6px; }
+.cupom-campo input { flex:1; min-width:0; text-transform:uppercase; letter-spacing:.06em; }
+.cupom-ret .erro { color:#B5462A; }
+.cupom-aplicado { display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; justify-content:space-between; margin:14px 0 6px; padding:10px 12px; border:1px dashed var(--roxo); border-radius:var(--raio-btn, 8px); background:#FBF6F1; font-size:14px; }
+.cupom-aplicado i { color:var(--roxo); }
