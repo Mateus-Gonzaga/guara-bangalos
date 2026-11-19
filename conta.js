@@ -196,7 +196,26 @@ P.reservas = q => {
 
 // ---------- confirmação da reserva (checkout) ----------
 const PIX_TESTE = new Proxy({}, { get: (_, k) => CMS.pix[k] }); // dados editáveis na Gestão
-const pixCopiaECola = (id, valor) => `00020126TESTE0014BR.GOV.BCB.PIX01${PIX_TESTE.chave}52040000530398654${valor.toFixed(2)}5802BR5920GUARABANGALOS6009ALTOPARAISO62${id}6304TEST`;
+// PIX copia e cola no padrão do Banco Central (BR Code), com valor e identificador da reserva
+const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9 ]/g, '').toUpperCase().trim();
+const emv = (id, v) => id + String(v.length).padStart(2, '0') + v;
+function crc16(t) {
+  let c = 0xFFFF;
+  for (let i = 0; i < t.length; i++) { c ^= t.charCodeAt(i) << 8; for (let j = 0; j < 8; j++) c = c & 0x8000 ? (c << 1) ^ 0x1021 : c << 1; c &= 0xFFFF; }
+  return c.toString(16).toUpperCase().padStart(4, '0');
+}
+function pixCopiaECola(id, valor) {
+  const P = CMS.pix, chave = String(P.chave || '').trim();
+  const corpo = emv('00', '01') + emv('26', emv('00', 'br.gov.bcb.pix') + emv('01', chave)) + emv('52', '0000') + emv('53', '986')
+    + emv('54', (+valor).toFixed(2)) + emv('58', 'BR') + emv('59', semAcento(P.favorecido).slice(0, 25) || 'GUARA BANGALOS')
+    + emv('60', semAcento(P.cidade || 'Alto Paraiso').slice(0, 15)) + emv('62', emv('05', String(id).replace(/[^A-Za-z0-9]/g, '').slice(0, 25) || '***')) + '6304';
+  return corpo + crc16(corpo);
+}
+function qrPix(texto) {
+  if (typeof qrcode !== 'function') return '';
+  const q = qrcode(0, 'M'); q.addData(texto); q.make();
+  return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+}
 
 P.reservar = q => {
   const u = unidade(q.unidade);
@@ -267,7 +286,7 @@ P.confirmacao = id => {
   const msg = encodeURIComponent(`Olá! Segue o comprovante da pré-reserva ${r.id}: ${u.nome}, ${dBR(r.entrada)} a ${dBR(r.saida)}.`);
   const pagar = r.status === 'aguardando' ? `
     <div id="pagamento" class="pix"><h4><i class="fa fa-qrcode"></i> Pague o sinal de ${fmt(r.sinal)} via PIX</h4>
-      <div class="pix-grid"><div class="qr" aria-label="QR Code de teste">${qrFake(r.id)}</div>
+      <div class="pix-grid"><div class="qr" role="img" aria-label="QR Code PIX do sinal">${qrPix(pixCopiaECola(r.id, r.sinal))}</div>
       <div><p><b>Chave PIX:</b> ${PIX_TESTE.chave}<br><b>Favorecido:</b> ${PIX_TESTE.favorecido}</p>
         <label>PIX copia e cola<textarea readonly rows="3" onclick="this.select()">${pixCopiaECola(r.id, r.sinal)}</textarea></label>
         <button class="btn btn-sm" onclick="navigator.clipboard.writeText(this.previousElementSibling.querySelector('textarea').value);toast('Código copiado')">Copiar código</button>
@@ -275,7 +294,7 @@ P.confirmacao = id => {
       <hr><h4>Enviar comprovante</h4>
       <form onsubmit="event.preventDefault();enviarComprovante('${r.id}',this)"><input type="file" name="arq" accept="image/*,application/pdf" required> <button class="btn btn-sm">Enviar</button></form>
       <p class="peq">Ou envie pelo <a target="_blank" href="https://wa.me/${esc(CMS.contato.whatsapp)}?text=${msg}">WhatsApp</a>.</p>
-      <p class="peq aviso-teste">Dados de pagamento fictícios: este é um site de demonstração.</p></div>` : '';
+      </div>` : '';
   return banda('Reservas') + `<section class="page-body"><div class="container" style="max-width:760px">
     <div class="checkout-title"><h3>Reserva ${r.id}</h3></div>
     <div class="checkout-box pad"><p>${selo(r.status)}</p><p><b>${linhaReserva(r)}</b></p>

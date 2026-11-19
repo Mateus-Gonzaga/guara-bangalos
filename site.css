@@ -1284,7 +1284,11 @@ input, select, textarea, .rs-datas, .rh-datas-g { border-radius:var(--raio-btn);
 .seg-lista i { color:var(--roxo); font-size:18px; margin-top:2px; }
 .seg-lista small { display:block; color:var(--suave); }
 /* selo Pet Friendly no canto superior esquerdo da foto da página inicial */
-.hero2-pet { position:absolute; top:24px; left:24px; width:150px; height:150px; border-radius:50%; z-index:2; filter:drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+.hero2-pet { position:absolute; top:24px; left:24px; width:150px; height:150px; padding:0; border:0; background:none; border-radius:50%; z-index:2; cursor:pointer; filter:drop-shadow(0 6px 16px rgba(0,0,0,.35)); transition:transform .2s ease, filter .2s ease; }
+.hero2-pet img { width:100%; height:100%; border-radius:50%; display:block; }
+.hero2-pet:hover { transform:translateY(-2px) scale(1.03); filter:drop-shadow(0 10px 22px rgba(0,0,0,.45)); }
+.hero2-pet:active { transform:scale(.98); }
+.hero2-pet:focus-visible { outline:3px solid #fff; outline-offset:3px; }
 @media (max-width:991px) { .hero2-pet { width:120px; height:120px; top:18px; left:18px; } }
 @media (max-width:640px) { .hero2-pet { width:84px; height:84px; top:14px; left:14px; } }
 
@@ -1327,3 +1331,22 @@ input, select, textarea, .rs-datas, .rh-datas-g { border-radius:var(--raio-btn);
 .cupom-ret .erro { color:#B5462A; }
 .cupom-aplicado { display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; justify-content:space-between; margin:14px 0 6px; padding:10px 12px; border:1px dashed var(--roxo); border-radius:var(--raio-btn, 8px); background:#FBF6F1; font-size:14px; }
 .cupom-aplicado i { color:var(--roxo); }
+
+/* caixa de informações do selo Pet Friendly */
+.info-modal { border:0; padding:0; background:transparent; width:min(560px, calc(100vw - 32px)); max-height:calc(100vh - 32px); overflow:visible; }
+.info-modal::backdrop { background:rgba(31,24,19,.62); backdrop-filter:blur(2px); }
+.info-card { position:relative; background:#fff; border-radius:var(--raio-img, 12px); padding:34px 34px 28px; max-height:calc(100vh - 32px); overflow:auto; box-shadow:0 24px 64px rgba(31,24,19,.35); color:var(--noite); text-align:center; }
+.info-card .cupom-fechar { top:10px; right:10px; }
+.info-selo { width:96px; height:96px; border-radius:50%; margin:0 auto 10px; display:block; }
+.info-card h2 { font:700 26px/1.2 Georgia, serif; margin:0 0 14px; }
+.info-texto { text-align:left; font-size:15.5px; line-height:1.6; color:var(--suave); }
+.info-texto p { margin:0 0 12px; }
+.info-acoes { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px; }
+.info-acoes .btn { min-height:46px; display:inline-flex; align-items:center; gap:8px; }
+.info-modal[open] .info-card { animation:cupom-entra .28s cubic-bezier(.2,.8,.2,1); }
+.info-modal.saindo .info-card { opacity:0; transform:translateY(8px); transition:opacity .18s, transform .18s; }
+@media (prefers-reduced-motion: reduce) { .info-modal[open] .info-card { animation:none; } .hero2-pet { transition:none; } }
+@media (max-width:640px) { .info-card { padding:28px 20px 22px; } .info-acoes .btn { flex:1 1 100%; justify-content:center; } }
+.pix-grid { grid-template-columns:auto 1fr; gap:20px; }
+.pix-grid > div { min-width:0; }
+.pix-grid .qr svg { width:180px; height:180px; display:block; background:#fff; border-radius:8px; }

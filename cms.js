@@ -76,7 +76,8 @@ const CMS_PADRAO = () => ({
     ['2027-03-26', '2027-03-27', 'Semana Santa'], ['2027-04-17', '2027-04-20', 'Tiradentes'],
   ],
   cupom: { ativo: 'nao', porcentagem: 10, titulo: '{p}% de desconto na sua primeira estadia', texto: 'Deixe seu e-mail e receba o código para usar na primeira reserva no site.', atraso: 8 },
-  pix: { chave: 'pix-teste@guarabangalos.test', favorecido: 'GUARÁ BANGALÔS (TESTE)', banco: 'Banco de Teste 000', agencia: '0001', conta: '12345-6' },
+  pix: { chave: '+5561984171381', favorecido: 'Bruno', banco: '336 · Banco C6 S.A.', agencia: '0001', conta: '27698882-5', cidade: 'Alto Paraiso' },
+  pet: { titulo: 'Seu pet é bem-vindo', texto: 'Aceitamos cães e gatos de pequeno e médio porte. Para o conforto de todos, pedimos:\n\n• Carteira de vacinação em dia (incluindo a antirrábica), apresentada no check-in.\n• Avise na reserva que vai levar o pet (campo Observações).\n• Até 2 animais por bangalô.\n• Nas áreas comuns, o pet fica sempre acompanhado e na guia.\n• Camas e sofás não são para os pets: traga a caminha dele.\n• Recolha as necessidades do seu pet.\n• Danos causados pelo animal são de responsabilidade do tutor.\n\nFicou com alguma dúvida? Fale com a gente pelo WhatsApp.' },
   galeria: ['img/guara/por-do-sol-1.webp', 'img/guara/por-do-sol-2.webp', 'img/guara/por-do-sol-3.webp', 'img/guara/por-do-sol-4.webp', 'img/guara/f01.webp', 'img/guara/f02.webp', 'img/guara/f04.webp', 'img/guara/f07.webp', 'img/guara/f09.webp', 'img/guara/f10.webp', 'img/guara/f11.webp', 'img/guara/f12.webp', 'img/guara/f13.webp', 'img/guara/f14.webp', 'img/guara/f15.webp', 'img/guara/f16.webp', 'img/guara/f17.webp', 'img/guara/f18.webp', 'img/guara/f19.webp', 'img/guara/f20.webp', 'img/guara/f21.webp', 'img/guara/f23.webp', 'img/guara/f25.webp', 'img/guara/f26.webp', 'img/guara/f27.webp', 'img/guara/f28.webp', 'img/guara/f30.webp', 'img/guara/f08.webp'],
   unidades: unidadesPadrao(),
 });

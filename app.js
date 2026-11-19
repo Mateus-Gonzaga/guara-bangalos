@@ -112,7 +112,7 @@ const P = {};
 P[''] = () => `
   <section class="hero2" style="background-image:linear-gradient(180deg, rgba(31,24,19,.15) 0%, rgba(31,24,19,.05) 40%, rgba(31,24,19,.78) 100%), url('${urlMidia(CMS.home.heroFoto)}')">
     <img class="hero2-lobo" src="${urlMidia(CMS.marca.logo)}" alt="" aria-hidden="true">
-    <img class="hero2-pet" src="img/selo-pet-friendly.webp" alt="Hospedagem Pet Friendly: aceitamos animais de estimação">
+    <button type="button" class="hero2-pet" onclick="abrirPet()" aria-label="Hospedagem Pet Friendly: ver as regras para pets"><img src="img/selo-pet-friendly.webp" alt=""></button>
     <div class="container hero2-texto">
       <h1>${esc(CMS.home.titulo)}</h1>
       <p>${esc(CMS.home.subtitulo)}</p>
@@ -362,6 +362,23 @@ function render() {
   if (typeof agendarCupom === 'function') agendarCupom();
   animar();
 }
+
+// caixa de informações do selo Pet Friendly (texto editável em Gestão > Editar site > Textos das páginas)
+window.abrirPet = () => {
+  const P = CMS.pet || {}, d = document.createElement('dialog');
+  d.className = 'info-modal'; d.setAttribute('aria-labelledby', 'pet-tit');
+  d.innerHTML = `<div class="info-card"><button type="button" class="cupom-fechar" aria-label="Fechar"><i class="fa fa-times" aria-hidden="true"></i></button>
+    <img class="info-selo" src="img/selo-pet-friendly.webp" alt="">
+    <h2 id="pet-tit">${esc(P.titulo || 'Hospedagem Pet Friendly')}</h2>
+    <div class="info-texto">${paragrafos(P.texto || '')}</div>
+    <div class="info-acoes"><a class="btn" target="_blank" rel="noopener" href="https://wa.me/${esc(CMS.contato.whatsapp)}?text=${encodeURIComponent('Olá! Quero levar meu pet para a Guará Bangalôs.')}"><i class="fab fa-whatsapp" aria-hidden="true"></i> Falar pelo WhatsApp</a>
+      <button type="button" class="btn btn-claro info-ok">Entendi</button></div></div>`;
+  const fechar = () => { d.classList.add('saindo'); setTimeout(() => d.remove(), 180); };
+  d.querySelectorAll('.cupom-fechar, .info-ok').forEach(b => b.onclick = fechar);
+  d.addEventListener('cancel', e => { e.preventDefault(); fechar(); });
+  d.addEventListener('click', e => { if (e.target === d) fechar(); });
+  document.body.appendChild(d); d.showModal();
+};
 
 // "Chapada dos Veadeiros" sempre em negrito nos textos do site
 function negritoChapada(raiz) {

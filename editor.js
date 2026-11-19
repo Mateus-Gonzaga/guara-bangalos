@@ -134,14 +134,15 @@ ED.precos = () => formulario('precos',
 ED.fotos = () => formulario('fotos', bloco('Galeria (página Fotos)', fotos('galeria', 'Fotos e vídeos'), 'Página Fotos. As 13 primeiras aparecem no mosaico; as demais em "Ver todas as fotos".'), '', '#/fotos');
 
 ED.paginas = () => formulario('paginas',
-  bloco('Textos das páginas', `${texto('paginas.sobre', 'Sobre a pousada', 'Deixe uma linha em branco entre parágrafos.', 10)}${texto('paginas.tarifario', 'Tarifário', 'Texto da página Tarifário. Os preços cobrados de verdade ficam em "Preços e regras".', 10)}${texto('paginas.politica', 'Política de cancelamento', '', 9)}${texto('paginas.contato', 'Página de contato', '', 3)}`), '', '#/sobre');
+  bloco('Textos das páginas', `${texto('paginas.sobre', 'Sobre a pousada', 'Deixe uma linha em branco entre parágrafos.', 10)}${texto('paginas.tarifario', 'Tarifário', 'Texto da página Tarifário. Os preços cobrados de verdade ficam em "Preços e regras".', 10)}${texto('paginas.politica', 'Política de cancelamento', '', 9)}${texto('paginas.contato', 'Página de contato', '', 3)}`) +
+  bloco('Selo Pet Friendly', `${campo('pet.titulo', 'Título da caixa')}${texto('pet.texto', 'Regras para pets', 'Aparece ao clicar no selo Pet Friendly da página inicial. Linha em branco separa parágrafos.', 12)}`, 'Selo no canto da foto do topo da página inicial.'), '', '#/sobre');
 
 ED.contato = () => formulario('contato',
   bloco('Contato', `<div class="ed-2">${campo('contato.telefone', 'Telefone')}${campo('contato.whatsapp', 'WhatsApp (só números, com 55 e DDD)', 'Ex.: 5561900000000')}${campo('contato.instagram', 'Instagram (sem @)')}${campo('contato.email', 'E-mail')}</div>`) +
   bloco('Localização e mapa', `${campo('local.titulo', 'Título da seção')}${texto('local.endereco', 'Endereço (como aparece no site)', '', 2)}${campo('local.enderecoCompleto', 'Endereço completo (botão "Copiar endereço")')}
     <div class="ed-2">${campo('local.lat', 'Latitude', 'Pegue no Google Maps: clique com o botão direito no local.')}${campo('local.lng', 'Longitude')}</div>
     <div class="ed-3">${CMS.local.passos.map((_, i) => `<div class="ed-card">${campo(`local.passos.${i}.titulo`, `Passo ${i + 1} do trajeto`)}${campo(`local.passos.${i}.sub`, 'Detalhe')}</div>`).join('')}</div>`) +
-  bloco('Dados para pagamento (PIX)', `<div class="ed-2">${campo('pix.chave', 'Chave PIX')}${campo('pix.favorecido', 'Favorecido')}${campo('pix.banco', 'Banco')}<div class="ed-2">${campo('pix.agencia', 'Agência')}${campo('pix.conta', 'Conta')}</div></div>`), '', '#/');
+  bloco('Dados para pagamento (PIX)', `<div class="ed-2">${campo('pix.chave', 'Chave PIX')}${campo('pix.favorecido', 'Favorecido')}${campo('pix.banco', 'Banco')}<div class="ed-2">${campo('pix.agencia', 'Agência')}${campo('pix.conta', 'Conta')}</div>${campo('pix.cidade', 'Cidade (vai no QR Code PIX)', 'Sem acentos. Ex.: Alto Paraiso')}</div><p class="peq">O QR Code e o PIX copia e cola de cada reserva são gerados com esta chave, o nome do favorecido e o valor do sinal.</p>`), '', '#/');
 
 ED.cupom = () => {
   const cs = db.get('cupons'), usados = cs.filter(c => c.reserva).length;
