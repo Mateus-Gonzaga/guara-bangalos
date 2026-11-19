@@ -92,6 +92,7 @@ const ED = {};
 ED.inicio = () => formulario('inicio',
   bloco('Nome e topo', `<div class="ed-2">${campo('marca.nome', 'Nome da pousada')}${campo('marca.slogan', 'Frase abaixo do nome (opcional)', 'Deixe vazio para mostrar só o nome no cabeçalho.')}</div>
     ${campo('home.titulo', 'Título grande do topo')}${texto('home.subtitulo', 'Frase do topo', '', 2)}${foto('home.heroFoto', 'Foto do topo')}`, 'Primeira coisa que o visitante vê ao abrir o site. O nome também aparece no cabeçalho de todas as páginas.') +
+  bloco('Selo Pet Friendly (canto da foto do topo)', `${campo('pet.titulo', 'Título da caixa')}${texto('pet.texto', 'Regras para pets', 'Aparece quando o visitante clica no selo. Linha em branco separa parágrafos.', 12)}`, 'Selo redondo no canto superior esquerdo da foto do topo. Ao clicar, abre uma caixa com este texto.') +
   bloco('Seção dos chalés', `${campo('home.chalesTitulo', 'Título')}${texto('home.chalesTexto', 'Texto', 'Deixe uma linha em branco para separar parágrafos.')}${foto('home.chalesFoto', 'Foto')}`, 'Logo abaixo da busca de datas, na página inicial.') +
   bloco('Destaques', `<div class="ed-2">${campo('home.destaquesTitulo', 'Título')}${campo('home.destaquesTexto', 'Frase')}</div>
     <div class="ed-3">${CMS.home.destaques.map((_, i) => `<div class="ed-card">${campo(`home.destaques.${i}.titulo`, `Destaque ${i + 1}`)}${campo(`home.destaques.${i}.texto`, 'Texto')}${foto(`home.destaques.${i}.foto`, 'Foto')}</div>`).join('')}</div>`, 'Três quadros com foto, no fundo lilás da página inicial.') +
@@ -134,8 +135,7 @@ ED.precos = () => formulario('precos',
 ED.fotos = () => formulario('fotos', bloco('Galeria (página Fotos)', fotos('galeria', 'Fotos e vídeos'), 'Página Fotos. As 13 primeiras aparecem no mosaico; as demais em "Ver todas as fotos".'), '', '#/fotos');
 
 ED.paginas = () => formulario('paginas',
-  bloco('Textos das páginas', `${texto('paginas.sobre', 'Sobre a pousada', 'Deixe uma linha em branco entre parágrafos.', 10)}${texto('paginas.tarifario', 'Tarifário', 'Texto da página Tarifário. Os preços cobrados de verdade ficam em "Preços e regras".', 10)}${texto('paginas.politica', 'Política de cancelamento', '', 9)}${texto('paginas.contato', 'Página de contato', '', 3)}`) +
-  bloco('Selo Pet Friendly', `${campo('pet.titulo', 'Título da caixa')}${texto('pet.texto', 'Regras para pets', 'Aparece ao clicar no selo Pet Friendly da página inicial. Linha em branco separa parágrafos.', 12)}`, 'Selo no canto da foto do topo da página inicial.'), '', '#/sobre');
+  bloco('Textos das páginas', `${texto('paginas.sobre', 'Sobre a pousada', 'Deixe uma linha em branco entre parágrafos.', 10)}${texto('paginas.tarifario', 'Tarifário', 'Texto da página Tarifário. Os preços cobrados de verdade ficam em "Preços e regras".', 10)}${texto('paginas.politica', 'Política de cancelamento', '', 9)}${texto('paginas.contato', 'Página de contato', '', 3)}`), '', '#/sobre');
 
 ED.contato = () => formulario('contato',
   bloco('Contato', `<div class="ed-2">${campo('contato.telefone', 'Telefone')}${campo('contato.whatsapp', 'WhatsApp (só números, com 55 e DDD)', 'Ex.: 5561900000000')}${campo('contato.instagram', 'Instagram (sem @)')}${campo('contato.email', 'E-mail')}</div>`) +
